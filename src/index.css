@@ -1,0 +1,518 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+  background-color: #07090e;
+  -webkit-touch-callout: none;
+}
+
+/* 1. Casino Chip Drop on Felt Animation */
+@keyframes chipDrop {
+  0% {
+    transform: scale(0) translateY(-14px);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2) translateY(2px);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.92) translateY(-1px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.chip-drop-bounce {
+  animation: chipDrop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* 2. Slot Machine Mechanical 3D Lever Pull & Spring Rebound (0.3s) */
+@keyframes leverSpring {
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) scaleY(1);
+  }
+  35% {
+    transform: perspective(600px) rotateX(55deg) rotateZ(35deg) scaleY(0.75) translateY(32px);
+  }
+  65% {
+    transform: perspective(600px) rotateX(-15deg) rotateZ(-8deg) scaleY(1.05) translateY(-4px);
+  }
+  85% {
+    transform: perspective(600px) rotateX(6deg) rotateZ(3deg) scaleY(0.98);
+  }
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) scaleY(1);
+  }
+}
+
+.lever-pull-animation {
+  animation: leverSpring 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: bottom center;
+}
+
+/* 3. Dice Cup (骰盅) Lightweight Stages & Shaking Animations */
+@keyframes diceCupDescend {
+  0% {
+    transform: translateY(-130%) scale(1.05);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(4px) scale(0.99);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes diceCupShake {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  15% {
+    transform: translate(-10px, -6px) rotate(-4deg);
+  }
+  30% {
+    transform: translate(10px, -8px) rotate(4deg);
+  }
+  45% {
+    transform: translate(-8px, 4px) rotate(-3deg);
+  }
+  60% {
+    transform: translate(8px, -4px) rotate(3deg);
+  }
+  75% {
+    transform: translate(-6px, 2px) rotate(-2deg);
+  }
+  90% {
+    transform: translate(4px, -2px) rotate(2deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+@keyframes diceCupLift {
+  0% {
+    transform: translateY(0%) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-25%) scale(1.02);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-110%) scale(1.06);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-150%) scale(1.1);
+    opacity: 0;
+  }
+}
+
+.dice-cup-cover {
+  animation: diceCupDescend 0.4s cubic-bezier(0.18, 0.9, 0.32, 1.15) forwards;
+  transform-origin: center bottom;
+}
+
+.dice-cup-shake {
+  animation: diceCupShake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+  transform-origin: center bottom;
+}
+
+.dice-cup-lift {
+  animation: diceCupLift 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: center bottom;
+}
+
+/* 3. Sic Bo 3D Cup Shaking & Vibration (Smooth 2.5s realistic physical resonance) */
+@keyframes cupShake3D {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  10% {
+    transform: translate(-3px, -2px) rotate(-3.5deg) scale(1.01);
+  }
+  20% {
+    transform: translate(3px, 2px) rotate(3deg) scale(0.99);
+  }
+  35% {
+    transform: translate(-4px, 3px) rotate(-4deg) scale(1.02);
+  }
+  50% {
+    transform: translate(4px, -2px) rotate(3.5deg) scale(0.98);
+  }
+  65% {
+    transform: translate(-3px, -2px) rotate(-2.5deg) scale(1.01);
+  }
+  80% {
+    transform: translate(2px, 2px) rotate(2deg) scale(0.995);
+  }
+  90% {
+    transform: translate(-1px, 1px) rotate(-1deg) scale(1);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+}
+
+.cup-shake-3d {
+  animation: cupShake3D 0.45s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  transform-origin: center bottom;
+}
+
+/* Ceramic Bowl 0.5s 3D Tilt & Micro-vibration */
+@keyframes bowlTiltVibrate {
+  0% {
+    transform: perspective(1000px) rotateX(18deg) rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+  15% {
+    transform: perspective(1000px) rotateX(24deg) rotateY(-8deg) rotateZ(-4deg) scale(0.98) translate3d(-4px, 2px, 0);
+  }
+  35% {
+    transform: perspective(1000px) rotateX(14deg) rotateY(10deg) rotateZ(5deg) scale(0.99) translate3d(6px, -3px, 0);
+  }
+  55% {
+    transform: perspective(1000px) rotateX(22deg) rotateY(-6deg) rotateZ(-3deg) scale(0.98) translate3d(-3px, 3px, 0);
+  }
+  75% {
+    transform: perspective(1000px) rotateX(17deg) rotateY(4deg) rotateZ(2deg) scale(0.99) translate3d(2px, -1px, 0);
+  }
+  100% {
+    transform: perspective(1000px) rotateX(15deg) rotateY(0deg) rotateZ(0deg) scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.bowl-tilt-vibrate {
+  animation: bowlTiltVibrate 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center center;
+}
+
+/* Slot Reel Blur */
+@keyframes reelBlurScroll {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(50%);
+  }
+}
+
+/* 4. Claw Machine Dramatic Slip & High-Speed Plunge Animations */
+@keyframes clawSlipWobble {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  15% {
+    transform: rotate(-6deg) scale(1.05) translateY(-2px);
+  }
+  30% {
+    transform: rotate(6deg) scale(0.98) translateY(1px);
+  }
+  45% {
+    transform: rotate(-4deg) scale(1.02);
+  }
+  60% {
+    transform: rotate(3deg) scale(0.99);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+/* Variation 1: Direct High-Speed Plunge */
+@keyframes dramaticPlunge {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: blur(0px);
+    opacity: 1;
+  }
+  12% {
+    transform: translateY(8px) scale(1.08) rotate(45deg);
+    filter: blur(0px);
+  }
+  35% {
+    transform: translateY(45px) scale(0.95) rotate(160deg);
+    filter: blur(1px);
+  }
+  70% {
+    transform: translateY(110px) scale(0.85) rotate(340deg);
+    filter: blur(2.5px);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(180px) scale(0.7) rotate(540deg);
+    filter: blur(4px);
+    opacity: 0;
+  }
+}
+
+/* Variation 2: Tumble Spiral Fall */
+@keyframes tumbleSpiralFall {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(14px, 15px) rotate(80deg) scale(1.05);
+  }
+  45% {
+    transform: translate(-18px, 50px) rotate(220deg) scale(0.92);
+  }
+  75% {
+    transform: translate(16px, 115px) rotate(420deg) scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-6px, 185px) rotate(600deg) scale(0.65);
+    opacity: 0;
+  }
+}
+
+/* Variation 3: Slow Tease Slip then Turbo Plunge */
+@keyframes teaseSlowThenDrop {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  15% {
+    transform: translate(-4px, 5px) rotate(-15deg) scale(1.03);
+  }
+  35% {
+    transform: translate(5px, 12px) rotate(20deg) scale(1.01);
+  }
+  50% {
+    transform: translate(-2px, 20px) rotate(-10deg) scale(0.98);
+  }
+  75% {
+    transform: translate(4px, 85px) rotate(180deg) scale(0.85);
+  }
+  100% {
+    transform: translate(0, 190px) rotate(450deg) scale(0.65);
+    opacity: 0;
+  }
+}
+
+@keyframes speedlinesRush {
+  0% {
+    transform: translateY(-30%) scaleY(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(10%) scaleY(1.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(40%) scaleY(1.8);
+    opacity: 0.3;
+  }
+}
+
+@keyframes flashPulse {
+  0%, 100% {
+    opacity: 0;
+  }
+  10%, 25% {
+    opacity: 0.45;
+  }
+}
+
+.claw-slip-wobble {
+  animation: clawSlipWobble 0.4s ease-in-out forwards;
+}
+
+.dramatic-plunge {
+  animation: dramaticPlunge 1.8s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+}
+
+.tumble-spiral-fall {
+  animation: tumbleSpiralFall 1.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+.tease-slow-drop {
+  animation: teaseSlowThenDrop 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.speedlines-rush {
+  animation: speedlinesRush 0.25s linear infinite;
+}
+
+.flash-pulse {
+  animation: flashPulse 0.4s ease-out forwards;
+}
+
+/* 5. Minimalist Lounge Marquee & Neon Breathing */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes neonBreathe {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.04);
+  }
+}
+
+.neon-breathing-bg {
+  animation: neonBreathe 7s ease-in-out infinite;
+}
+
+/* 6. Toast Aura (敬酒幸運光環) Radiant Page Perimeter Glow */
+@keyframes auraPagePerimeterPulse {
+  0%, 100% {
+    box-shadow: 
+      inset 0 0 32px rgba(245, 158, 11, 0.4),
+      0 0 24px rgba(245, 158, 11, 0.35);
+    border-color: rgba(251, 191, 36, 0.75);
+  }
+  50% {
+    box-shadow: 
+      inset 0 0 60px rgba(245, 158, 11, 0.65),
+      0 0 42px rgba(245, 158, 11, 0.55);
+    border-color: rgba(253, 224, 71, 1);
+  }
+}
+
+.toast-aura-page-glow {
+  border: 2.5px solid rgba(251, 191, 36, 0.85);
+  animation: auraPagePerimeterPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes auraTableGlow {
+  0%, 100% {
+    box-shadow: 0 0 28px rgba(245, 158, 11, 0.45), inset 0 0 20px rgba(245, 158, 11, 0.18), 0 0 60px rgba(217, 119, 6, 0.2);
+    border-color: rgba(251, 191, 36, 0.85);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(245, 158, 11, 0.75), inset 0 0 35px rgba(245, 158, 11, 0.28), 0 0 85px rgba(245, 158, 11, 0.35);
+    border-color: rgba(253, 224, 71, 1);
+  }
+}
+
+.toast-aura-table-glow {
+  animation: auraTableGlow 2.4s ease-in-out infinite;
+  border-color: rgba(251, 191, 36, 0.95) !important;
+}
+
+@keyframes auraParticleFloat {
+  0% {
+    transform: translateY(12px) scale(0.6) rotate(0deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.85;
+  }
+  75% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-40px) scale(1.1) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.aura-sparkle-float {
+  animation: auraParticleFloat 3.2s ease-in-out infinite;
+}
+
+@keyframes auraBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.85);
+  }
+}
+
+.aura-badge-pulse {
+  animation: auraBadgePulse 2s ease-in-out infinite;
+}
+
+/* 7. Mega Win Coin Rain & Laser Neon Particle Animations (全螢幕金幣雨與雷射光束) */
+@keyframes coinRainFall {
+  0% {
+    transform: translateY(-60px) rotate(0deg) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(540deg) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.coin-rain-particle {
+  animation: coinRainFall var(--fall-duration, 1.8s) cubic-bezier(0.25, 0.46, 0.45, 0.94) var(--fall-delay, 0s) forwards;
+}
+
+@keyframes laserBeamSweep {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.1) rotate(var(--beam-rot, -18deg));
+  }
+  30% {
+    opacity: 0.75;
+  }
+  70% {
+    opacity: 0.6;
+    transform: scaleX(1.15) rotate(var(--beam-rot, -18deg));
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.2) rotate(var(--beam-rot, -18deg));
+  }
+}
+
+.laser-beam-effect {
+  animation: laserBeamSweep 1.5s ease-in-out forwards;
+}
+
+@keyframes goldenFlashScreen {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  65% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.golden-flash-bg {
+  animation: goldenFlashScreen 1.5s ease-out forwards;
+}
+
+

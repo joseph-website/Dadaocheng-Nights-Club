@@ -1,0 +1,6 @@
+{
+  "name": "大稻賭埕之夜",
+  "description": "大稻賭埕之夜 — 隱匿於霓虹夜幕之下的地下頂級賭埕。匯聚歐式輪盤、21點、金字塔彈珠台、德州撲克、花旗骰、拉霸老虎機、夾娃娃機、夜市套圈圈與古早味打彈珠等豐富博弈，配備地下當鋪週轉、黑市密藏收購、夜行酒吧招待、導入劇情與離場結算清單，體驗暗黑微醺與心跳博弈的極致盛宴。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
