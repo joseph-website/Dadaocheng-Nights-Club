@@ -55,6 +55,7 @@ import {
   Lock,
   Unlock,
   Wine,
+  LogOut,
 } from 'lucide-react';
 
 interface LobbyViewProps {
@@ -62,7 +63,8 @@ interface LobbyViewProps {
   initialTab?: 'counter' | 'blackmarket' | 'pawnshop' | 'collection' | 'bar';
   isBankruptcyMode?: boolean;
   onTriggerGameOver?: () => void;
-  onUpdateBalance: (newBalance: number) => void;
+  onOpenCashOut?: () => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   onSelectGame: (
     game: 'roulette' | 'slot' | 'pinball' | 'plinko' | 'blackjack' | 'poker' | 'siba' | 'craps' | 'claw'
   ) => void;
@@ -73,6 +75,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   initialTab,
   isBankruptcyMode = false,
   onTriggerGameOver,
+  onOpenCashOut,
   onUpdateBalance,
   onSelectGame,
 }) => {
@@ -593,6 +596,22 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             <Award className="w-4 h-4 text-purple-400" />
             <span>【珍品陳列館】({collectibles.length}/{ALL_COLLECTIBLES.length})</span>
           </button>
+
+          {onOpenCashOut && (
+            <button
+              id="btn-lobby-open-cashout"
+              type="button"
+              onClick={() => {
+                sound.playClick();
+                onOpenCashOut();
+              }}
+              className="ml-auto px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white shadow-md font-black text-xs sm:text-sm flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shrink-0"
+              title="結算今夜戰績並生成離場報告"
+            >
+              <LogOut className="w-4 h-4 text-yellow-300" />
+              <span>🚪 離場結算</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -26,7 +26,7 @@ import {
 
 interface PlinkoGameProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   onRoundBusyChange?: (isBusy: boolean, currentBet?: number) => void;
 }
 
@@ -124,7 +124,39 @@ export const PlinkoGame: React.FC<PlinkoGameProps> = ({
 
   // Fresh refs for closure safety
   const balanceRef = useRef(balance);
-  balanceRef.current = balance;
+  useEffect(() => {
+    balanceRef.current = balance;
+  }, [balance]);
+
+  // Listen for full casino reset to clear ball inventory and stats
+  useEffect(() => {
+    const handleFullReset = () => {
+      ballsCountRef.current = 0;
+      setBallsCount(0);
+      setActiveBalls([]);
+      setIsAutoDropping(false);
+      autoSessionRef.current.active = false;
+      setIsAutoSessionActive(false);
+      try {
+        localStorage.removeItem(STORAGE_KEYS.BALLS);
+        localStorage.removeItem(STORAGE_KEYS.STATS);
+        localStorage.removeItem(STORAGE_KEYS.HISTORY);
+      } catch {
+        // ignore
+      }
+      setStats({
+        totalDrops: 0,
+        totalCost: 0,
+        totalWon: 0,
+        jackpots: 0,
+        highestMultiplier: 0,
+      });
+      setHistory([]);
+    };
+
+    window.addEventListener('casino_full_reset', handleFullReset);
+    return () => window.removeEventListener('casino_full_reset', handleFullReset);
+  }, []);
 
   const ballsCountRef = useRef(ballsCount);
 
@@ -162,7 +194,7 @@ export const PlinkoGame: React.FC<PlinkoGameProps> = ({
 
     const nextBal = balanceRef.current - pkg.cost;
     balanceRef.current = nextBal;
-    onUpdateBalance(nextBal);
+    onUpdateBalance((prev: number) => Math.max(0, prev - pkg.cost));
 
     updateBallsCount(ballsCountRef.current + pkg.balls);
 
@@ -458,10 +490,9 @@ export const PlinkoGame: React.FC<PlinkoGameProps> = ({
         }
       }
 
-      // Update Balance with won chips!
-      const updatedBal = balanceRef.current + finalPayout;
-      balanceRef.current = updatedBal;
-      onUpdateBalance(updatedBal);
+      // Update Balance with won chips atomically!
+      onUpdateBalance((prev: number) => prev + finalPayout);
+      balanceRef.current = balanceRef.current + finalPayout;
 
       // Track in Auto Drop Session if active and ball belongs strictly to this session
       const isCurrentAutoSessionBall =

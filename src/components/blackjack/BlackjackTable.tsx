@@ -51,7 +51,7 @@ import {
 
 interface BlackjackTableProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   selectedChip?: number;
   onSelectChip?: (chip: number) => void;
   onResetBalance?: () => void;

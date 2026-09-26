@@ -9,6 +9,7 @@ import {
   Check,
   Zap,
   BookOpen,
+  LogOut,
 } from 'lucide-react';
 import { sound } from '../../utils/audio';
 import { isTurboMode, setTurboMode } from '../../utils/turbo';
@@ -26,6 +27,7 @@ interface SystemSettingsModalProps {
   onOpenCareerStats: () => void;
   onOpenHotkeys: () => void;
   onOpenPrologue?: () => void;
+  onOpenCashOut?: () => void;
 }
 
 export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
@@ -39,6 +41,7 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
   onOpenCareerStats,
   onOpenHotkeys,
   onOpenPrologue,
+  onOpenCashOut,
 }) => {
   const [turbo, setTurbo] = useState(() => isTurboMode());
 
@@ -261,6 +264,34 @@ export const SystemSettingsModal: React.FC<SystemSettingsModalProps> = ({
               />
             </button>
           </div>
+
+          {/* 4.5 離場結算報告 (Cash Out Settlement Card) */}
+          {onOpenCashOut && (
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-950/40 via-yellow-950/20 to-stone-900 border border-amber-500/40 hover:border-amber-400 transition-colors flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center">
+                  <LogOut className="w-5 h-5 text-yellow-300" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-amber-300">離場結算清單</h4>
+                  <p className="text-xs text-stone-400">總結今晚戰績、稱號評定與盈虧報告</p>
+                </div>
+              </div>
+
+              <button
+                id="btn-modal-open-cashout"
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  onClose();
+                  onOpenCashOut();
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs cursor-pointer transition-all active:scale-95 shadow-md flex items-center gap-1"
+              >
+                <span>離場結算</span>
+              </button>
+            </div>
+          )}
 
           {/* 5. 重置籌碼 $20,000 (Reset $20K) */}
           <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-900/50 hover:border-rose-500/50 transition-colors flex items-center justify-between gap-3">

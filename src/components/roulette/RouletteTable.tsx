@@ -33,7 +33,7 @@ import { CasinoChip } from '../common/CasinoChip';
 
 export interface RouletteTableProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   selectedChip?: number;
   onSelectChip?: (chip: number) => void;
   soundEnabled?: boolean;
@@ -173,7 +173,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
       const id = type === 'straight' ? `straight-${value}` : type;
       const defaultLabel = label || id;
 
-      onUpdateBalance(balance - selectedChip);
+      onUpdateBalance((prev: number) => Math.max(0, prev - selectedChip));
 
       setBets((prev) => {
         const existingIndex = prev.findIndex((b) => b.id === id);
@@ -216,7 +216,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
       }
 
       sound.playChip();
-      onUpdateBalance(balance - totalNeeded);
+      onUpdateBalance((prev: number) => Math.max(0, prev - totalNeeded));
       dispatchBetAction({ gameId: 'roulette', betType: 'batch', amount: totalNeeded });
 
       setBets((prev) => {
@@ -260,7 +260,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
     const lastAction = betHistoryStack[betHistoryStack.length - 1];
     setBetHistoryStack((prev) => prev.slice(0, -1));
 
-    onUpdateBalance(balance + lastAction.amount);
+    onUpdateBalance((prev: number) => prev + lastAction.amount);
     setBets((prev) => {
       const existingIdx = prev.findIndex((b) => b.id === lastAction.id);
       if (existingIdx === -1) return prev;
@@ -283,20 +283,20 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
       const existing = bets.find((b) => b.id === id);
       if (!existing) return;
 
-      onUpdateBalance(balance + existing.amount);
+      onUpdateBalance((prev: number) => prev + existing.amount);
       setBets((prev) => prev.filter((b) => b.id !== id));
       setBetHistoryStack((prev) => prev.filter((b) => b.id !== id));
     },
-    [isSpinning, bets, balance, onUpdateBalance]
+    [isSpinning, bets, onUpdateBalance]
   );
 
   // Clear all bets
   const handleClearBets = useCallback(() => {
     if (isSpinning || bets.length === 0) return;
-    onUpdateBalance(balance + totalBet);
+    onUpdateBalance((prev: number) => prev + totalBet);
     setBets([]);
     setBetHistoryStack([]);
-  }, [isSpinning, bets.length, balance, totalBet, onUpdateBalance]);
+  }, [isSpinning, bets.length, totalBet, onUpdateBalance]);
 
   // Double all bets (2X)
   const handleDoubleBets = useCallback(() => {
@@ -306,7 +306,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
       return;
     }
 
-    onUpdateBalance(balance - totalBet);
+    onUpdateBalance((prev: number) => Math.max(0, prev - totalBet));
     const added: { id: string; amount: number }[] = [];
     setBets((prev) =>
       prev.map((b) => {
@@ -332,7 +332,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
     }
 
     const netChange = bets.length > 0 ? totalBet - prevTotal : -prevTotal;
-    onUpdateBalance(balance + netChange);
+    onUpdateBalance((prev: number) => Math.max(0, prev + netChange));
 
     setBets([...previousBets]);
     setBetHistoryStack(
@@ -369,7 +369,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
         notifyHouseBonus(bonus, '輪盤');
       }
     }
-    onUpdateBalance(balance + finalPayout);
+    onUpdateBalance((prev: number) => prev + finalPayout);
 
     // Check Roulette Hidden Collectibles Silently (Differentiated triggers & Chip thresholds)
     if (targetNumber === 0 && bets.some((b) => b.type === 'straight' && b.value === 0 && b.amount >= 300)) {

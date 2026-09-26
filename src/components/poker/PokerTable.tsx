@@ -49,7 +49,7 @@ import {
 
 interface PokerTableProps {
   balance: number;
-  onUpdateBalance: (newBal: number) => void;
+  onUpdateBalance: (newBal: number | ((prev: number) => number)) => void;
   selectedChip: number;
   onSelectChip: (chip: number) => void;
   onResetBalance?: () => void;

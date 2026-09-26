@@ -35,7 +35,7 @@ import {
 
 interface SlotMachineProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   soundEnabled: boolean;
   onRoundBusyChange?: (isBusy: boolean, currentBet?: number) => void;
 }
@@ -214,8 +214,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
 
     // Deduct bet from shared balance
     onRoundBusyChange?.(true, betAmount);
-    const currentBalance = balanceRef.current;
-    onUpdateBalance(currentBalance - betAmount);
+    onUpdateBalance((prev: number) => Math.max(0, prev - betAmount));
     dispatchBetAction({ gameId: 'slot', betType: 'spin', amount: betAmount });
     setLastResult(null);
 
@@ -297,7 +296,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         }
 
         // Credit win to global balance
-        onUpdateBalance(balanceRef.current + finalWin);
+        onUpdateBalance((prev: number) => prev + finalWin);
 
         if (result.isJackpot) {
           sound.playBigWin();

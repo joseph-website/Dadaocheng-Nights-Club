@@ -48,7 +48,7 @@ import {
 
 interface SibaGameProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   selectedChip?: number;
   onSelectChip?: (chip: number) => void;
   soundEnabled: boolean;
@@ -211,7 +211,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     // Deduct chip from balance immediately
     const newTotal = totalBetAmount + selectedChip;
     onRoundBusyChange?.(true, newTotal);
-    onUpdateBalance(balance - selectedChip);
+    onUpdateBalance((prev: number) => Math.max(0, prev - selectedChip));
     dispatchBetAction({ gameId: 'siba', betType: type, amount: selectedChip, label });
 
     const betId = `bet-${type}`;
@@ -250,7 +250,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
 
     if (betToRemove) {
       sound.playClick();
-      onUpdateBalance(balance + betToRemove.amount);
+      onUpdateBalance((prev: number) => prev + betToRemove.amount);
       const targetId = betToRemove.id;
       const nextBets = currentBets.filter((b) => b.id !== targetId);
       setCurrentBets(nextBets);
@@ -266,7 +266,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     const lastAction = betHistoryStack[betHistoryStack.length - 1];
     setBetHistoryStack((prev) => prev.slice(0, -1));
     sound.playClick();
-    onUpdateBalance(balance + lastAction.amount);
+    onUpdateBalance((prev: number) => prev + lastAction.amount);
 
     setCurrentBets((prev) => {
       const existingIdx = prev.findIndex((b) => b.id === lastAction.id);
@@ -292,7 +292,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
   const handleClearBets = () => {
     if (isRolling || currentBets.length === 0) return;
     sound.playClick();
-    onUpdateBalance(balance + totalBetAmount);
+    onUpdateBalance((prev: number) => prev + totalBetAmount);
     setCurrentBets([]);
     setBetHistoryStack([]);
     onRoundBusyChange?.(false, 0);
@@ -309,7 +309,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     sound.playChip();
     const newDoubleTotal = totalBetAmount * 2;
     onRoundBusyChange?.(true, newDoubleTotal);
-    onUpdateBalance(balance - totalBetAmount);
+    onUpdateBalance((prev: number) => Math.max(0, prev - totalBetAmount));
     dispatchBetAction({ gameId: 'siba', betType: 'double', amount: totalBetAmount });
     setCurrentBets((prev) =>
       prev.map((b) => ({ ...b, amount: b.amount * 2 }))
@@ -327,11 +327,11 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     }
     // Refund current bets first if any
     if (currentBets.length > 0) {
-      onUpdateBalance(balance + totalBetAmount);
+      onUpdateBalance((prev: number) => prev + totalBetAmount);
     }
     sound.playChip();
     onRoundBusyChange?.(true, lastTotal);
-    onUpdateBalance(balance - lastTotal);
+    onUpdateBalance((prev: number) => Math.max(0, prev - lastTotal));
     dispatchBetAction({ gameId: 'siba', betType: 'rebet', amount: lastTotal });
     setCurrentBets([...lastBets]);
   };
@@ -406,7 +406,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
         }
       }
 
-      onUpdateBalance(balance + finalPayout);
+      onUpdateBalance((prev: number) => prev + finalPayout);
 
       // Check Hidden Collectibles Silently (Differentiated triggers & Chip thresholds)
       const totalSibaBet = currentBets.reduce((s, b) => s + b.amount, 0);

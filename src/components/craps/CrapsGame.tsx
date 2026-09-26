@@ -39,7 +39,7 @@ import {
 
 interface CrapsGameProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   selectedChip: number;
   onSelectChip: (chip: number) => void;
   soundEnabled?: boolean;
@@ -180,7 +180,7 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
     const newTotal = totalBet + selectedChip;
     onRoundBusyChange?.(true, newTotal);
     sound.playChip();
-    onUpdateBalance(balance - selectedChip);
+    onUpdateBalance((prev: number) => Math.max(0, prev - selectedChip));
     dispatchBetAction({ gameId: 'craps', betType: type, amount: selectedChip, label });
 
     const betId = `craps-bet-${type}`;
@@ -218,7 +218,7 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
     if (!existing) return;
 
     sound.playClick();
-    onUpdateBalance(balance + existing.amount);
+    onUpdateBalance((prev: number) => prev + existing.amount);
     setCurrentBets((prev) => prev.filter((b) => b.id !== betId));
     setBetHistoryStack((prev) => prev.filter((b) => b.type !== type));
   };
@@ -229,7 +229,7 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
     const lastAction = betHistoryStack[betHistoryStack.length - 1];
     setBetHistoryStack((prev) => prev.slice(0, -1));
     sound.playClick();
-    onUpdateBalance(balance + lastAction.amount);
+    onUpdateBalance((prev: number) => prev + lastAction.amount);
 
     const betId = `craps-bet-${lastAction.type}`;
     setCurrentBets((prev) => {
@@ -251,7 +251,7 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
   const handleClearBets = () => {
     if (isRolling || currentBets.length === 0) return;
     sound.playClick();
-    onUpdateBalance(balance + totalBet);
+    onUpdateBalance((prev: number) => prev + totalBet);
     setCurrentBets([]);
     setBetHistoryStack([]);
   };
@@ -266,7 +266,7 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
 
     const newDoubleTotal = totalBet * 2;
     onRoundBusyChange?.(true, newDoubleTotal);
-    onUpdateBalance(balance - totalBet);
+    onUpdateBalance((prev: number) => Math.max(0, prev - totalBet));
     dispatchBetAction({ gameId: 'craps', betType: 'double', amount: totalBet });
     setCurrentBets((prev) =>
       prev.map((b) => ({
@@ -287,9 +287,9 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
 
     onRoundBusyChange?.(true, prevTotal);
     if (currentBets.length > 0) {
-      onUpdateBalance(balance + totalBet - prevTotal);
+      onUpdateBalance((prev: number) => Math.max(0, prev + totalBet - prevTotal));
     } else {
-      onUpdateBalance(balance - prevTotal);
+      onUpdateBalance((prev: number) => Math.max(0, prev - prevTotal));
     }
     dispatchBetAction({ gameId: 'craps', betType: 'rebet', amount: prevTotal });
     setCurrentBets([...previousBets]);
@@ -315,7 +315,7 @@ export const CrapsGame: React.FC<CrapsGameProps> = ({
         finalPayout += bonusWon;
         notifyHouseBonus(bonus, '花旗骰');
       }
-      onUpdateBalance(balance + finalPayout);
+      onUpdateBalance((prev: number) => prev + finalPayout);
     }
 
     // Persist unresolved bets on table (e.g. Pass Line during point phase)

@@ -25,7 +25,7 @@ const STORAGE_KEYS = {
 
 interface PinballGameProps {
   balance: number;
-  onUpdateBalance: (newBalance: number) => void;
+  onUpdateBalance: (newBalance: number | ((prev: number) => number)) => void;
   soundEnabled?: boolean;
   onRoundBusyChange?: (isBusy: boolean) => void;
   onNavigateToLobby?: () => void;
@@ -410,7 +410,27 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
   });
 
   const balanceRef = useRef(balance);
-  balanceRef.current = balance;
+  useEffect(() => {
+    balanceRef.current = balance;
+  }, [balance]);
+
+  // Listen for full casino reset to clear pinball balls, score, and state
+  useEffect(() => {
+    const handleFullReset = () => {
+      ballsCountRef.current = 0;
+      setBallsCount(0);
+      activeBallsRef.current = [];
+      setSessionTotalScore(0);
+      setLastWin(null);
+      try {
+        localStorage.removeItem(STORAGE_KEYS.BALLS);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('casino_full_reset', handleFullReset);
+    return () => window.removeEventListener('casino_full_reset', handleFullReset);
+  }, []);
 
   const onUpdateBalanceRef = useRef(onUpdateBalance);
   onUpdateBalanceRef.current = onUpdateBalance;
@@ -805,7 +825,7 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
 
     const nextBal = balanceRef.current - pkg.cost;
     balanceRef.current = nextBal;
-    onUpdateBalanceRef.current(nextBal);
+    onUpdateBalanceRef.current((prev: number) => Math.max(0, prev - pkg.cost));
 
     updateBallsCount(ballsCountRef.current + pkg.balls);
     sound.playChip();
@@ -1763,7 +1783,7 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
 
             const newBalance = balanceRef.current + h.payout;
             balanceRef.current = newBalance;
-            onUpdateBalanceRef.current(newBalance);
+            onUpdateBalanceRef.current((prev: number) => prev + h.payout);
 
             recordCareerRound({
               gameId: 'pinball',

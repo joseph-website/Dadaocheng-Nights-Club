@@ -105,25 +105,8 @@ export const GAME_TABS: { id: ActiveGameTab; name: string; shortName: string; ic
 ];
 
 export default function App() {
-  // Active game module: Default to 'lobby'
-  const [activeGame, setActiveGame] = useState<ActiveGameTab>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
-    if (
-      saved === 'lobby' ||
-      saved === 'roulette' ||
-      saved === 'slot' ||
-      saved === 'plinko' ||
-      saved === 'blackjack' ||
-      saved === 'poker' ||
-      saved === 'siba' ||
-      saved === 'craps' ||
-      saved === 'claw' ||
-      saved === 'pinball'
-    ) {
-      return saved as ActiveGameTab;
-    }
-    return 'lobby';
-  });
+  // Active game module: Always default to 'lobby' on entry/refresh
+  const [activeGame, setActiveGame] = useState<ActiveGameTab>('lobby');
 
   // Leave-Table Item Delivery Modal Interceptor state
   const [pendingLeaveModal, setPendingLeaveModal] = useState<{
@@ -145,15 +128,29 @@ export default function App() {
     forfeitAmount: number;
   } | null>(null);
 
-  // Global Virtual Chips Balance (shared across Roulette, Blackjack, Slot, Sic Bo)
+  // Global Virtual Chips Balance (shared across all games and lobby)
   const [balance, setBalance] = useState<number>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BALANCE) ?? localStorage.getItem('european_roulette_balance_v1');
+    const saved = localStorage.getItem(STORAGE_KEYS.BALANCE);
     if (saved) {
       const num = parseInt(saved, 10);
       if (!isNaN(num) && num >= 0) return num;
     }
     return INITIAL_BALANCE;
   });
+
+  // Safe atomic balance updater supporting both direct value and functional delta
+  const handleUpdateBalance = useCallback((updater: number | ((prev: number) => number)) => {
+    setBalance((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      const safeNext = Math.max(0, Math.round(Number(next) || 0));
+      try {
+        localStorage.setItem(STORAGE_KEYS.BALANCE, safeNext.toString());
+      } catch {
+        // ignore
+      }
+      return safeNext;
+    });
+  }, []);
 
   // Toast Aura state
   const [auraActive, setAuraActive] = useState<boolean>(() => isAuraActive());
@@ -204,7 +201,7 @@ export default function App() {
   const [isGameOverOpen, setIsGameOverOpen] = useState(false);
   const [isCurtainClosing, setIsCurtainClosing] = useState(false);
   const [isCurtainOpening, setIsCurtainOpening] = useState(false);
-  const [lobbyTab, setLobbyTab] = useState<'counter' | 'blackmarket' | 'pawnshop' | 'collection'>('counter');
+  const [lobbyTab, setLobbyTab] = useState<'counter' | 'blackmarket' | 'pawnshop' | 'collection' | 'bar'>('counter');
   const [isUnderBankruptcyPawn, setIsUnderBankruptcyPawn] = useState(false);
   const [inventoryCount, setInventoryCount] = useState({ total: 0, redeemablesCount: 0, collectiblesCount: 0 });
   const [isGameRoundBusy, setIsGameRoundBusy] = useState(false);
@@ -455,6 +452,9 @@ export default function App() {
   // Handle Restart Game from Game Over screen
   const handleRestartGame = useCallback(() => {
     resetAllCasinoData();
+    localStorage.removeItem('plinko_balls_inventory_v1');
+    localStorage.removeItem('pinball_balls_inventory_v1');
+    localStorage.setItem(STORAGE_KEYS.BALANCE, INITIAL_BALANCE.toString());
     window.dispatchEvent(new CustomEvent('casino_full_reset'));
     setBalance(INITIAL_BALANCE);
     setActiveGame('lobby');
@@ -465,7 +465,7 @@ export default function App() {
     setIsUnderBankruptcyPawn(false);
     setIsBankruptcyAlertOpen(false);
     refreshInventoryCount();
-    toastService.success('🔄 歡迎重新開始！已為您清空歷史戰績與圖鑑，並重新發放 20,000 點 VIP 籌碼！');
+    toastService.success('🔄 歡迎重新開始！已為您清空歷史戰績、彈珠庫存與圖鑑，並重新發放 20,000 點 VIP 籌碼！');
 
     setTimeout(() => {
       setIsCurtainOpening(false);
@@ -609,8 +609,11 @@ export default function App() {
   const handlePerformReset = () => {
     if (isGameRoundBusy || currentGameBetAtStake > 0) return;
 
-    // Hard reset all casino stats, game counters, inventories, redeemables, collectibles, and achievements
+    // Hard reset all casino stats, game counters, inventories, redeemables, collectibles, achievements and balls
     resetAllCasinoData();
+    localStorage.removeItem('plinko_balls_inventory_v1');
+    localStorage.removeItem('pinball_balls_inventory_v1');
+    localStorage.setItem(STORAGE_KEYS.BALANCE, INITIAL_BALANCE.toString());
     window.dispatchEvent(new CustomEvent('casino_full_reset'));
     setBalance(INITIAL_BALANCE);
     refreshInventoryCount();
@@ -974,14 +977,14 @@ export default function App() {
               <span className="hidden md:inline text-xs">系統</span>
             </button>
 
-            {/* Cash Out & Session Settlement Button (Desktop/Tablet quick button; on mobile in System Modal) */}
+            {/* Cash Out & Session Settlement Button (Always accessible on all devices) */}
             <button
               id="btn-global-cash-out"
               onClick={() => {
                 sound.playClick();
                 setIsCashOutOpen(true);
               }}
-              className="hidden sm:flex p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white border border-amber-400/60 text-xs font-bold transition-all cursor-pointer active:scale-95 items-center justify-center gap-1 min-h-[38px] min-w-[38px] shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+              className="flex p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white border border-amber-400/60 text-xs font-bold transition-all cursor-pointer active:scale-95 items-center justify-center gap-1 min-h-[36px] min-w-[36px] sm:min-h-[38px] sm:min-w-[38px] shadow-[0_0_10px_rgba(245,158,11,0.25)]"
               title="結算今晚戰績並離場"
             >
               <LogOut className="w-3.5 h-3.5 text-yellow-300" />
@@ -1032,6 +1035,20 @@ export default function App() {
                   </button>
                 );
               })}
+
+              {/* Dedicated Cash Out action in Drawer */}
+              <button
+                id="drawer-tab-btn-cashout"
+                onClick={() => {
+                  sound.playClick();
+                  setIsDrawerOpen(false);
+                  setIsCashOutOpen(true);
+                }}
+                className="col-span-3 sm:col-span-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-3 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap active:scale-95 touch-manipulation min-h-[44px] bg-gradient-to-r from-amber-600/90 to-rose-600/90 hover:from-amber-500 hover:to-rose-500 text-white border border-amber-400/50 shadow-md"
+              >
+                <LogOut className="w-4 h-4 text-yellow-300" />
+                <span>🚪 離場結算</span>
+              </button>
             </div>
 
             {/* Spectator NPC in Drawer for smaller screens */}
@@ -1042,7 +1059,7 @@ export default function App() {
                   gameName={GAME_TABS.find((t) => t.id === activeGame)?.name || '賭桌'}
                   balance={balance}
                   onUpdateBalance={(newBal) => {
-                    setBalance(newBal);
+                    handleUpdateBalance(newBal);
                     refreshInventoryCount();
                   }}
                 />
@@ -1073,7 +1090,8 @@ export default function App() {
               initialTab={lobbyTab}
               isBankruptcyMode={isUnderBankruptcyPawn}
               onTriggerGameOver={handleTriggerGameOver}
-              onUpdateBalance={(newBal) => setBalance(newBal)}
+              onOpenCashOut={() => setIsCashOutOpen(true)}
+              onUpdateBalance={handleUpdateBalance}
               onSelectGame={(game) => handleRequestTabChange(game)}
             />
           </div>
@@ -1094,7 +1112,7 @@ export default function App() {
               <RouletteTable
                 balance={balance}
                 onUpdateBalance={(newBal) => {
-                  setBalance(newBal);
+                  handleUpdateBalance(newBal);
                   refreshInventoryCount();
                 }}
                 selectedChip={selectedChip}
@@ -1111,7 +1129,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <BlackjackTable
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 selectedChip={selectedChip}
                 onSelectChip={setSelectedChip}
                 onResetBalance={handleOpenResetModal}
@@ -1125,7 +1143,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <SlotMachine
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 soundEnabled={soundEnabled}
                 onRoundBusyChange={handleRoundBusyChange}
               />
@@ -1137,7 +1155,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <SibaGame
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 selectedChip={selectedChip}
                 onSelectChip={setSelectedChip}
                 soundEnabled={soundEnabled}
@@ -1151,7 +1169,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <PokerTable
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 selectedChip={selectedChip}
                 onSelectChip={setSelectedChip}
                 onResetBalance={handleOpenResetModal}
@@ -1165,7 +1183,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <CrapsGame
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 selectedChip={selectedChip}
                 onSelectChip={setSelectedChip}
                 soundEnabled={soundEnabled}
@@ -1179,7 +1197,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <PlinkoGame
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 selectedChip={selectedChip}
                 onSelectChip={setSelectedChip}
                 onRoundBusyChange={handleRoundBusyChange}
@@ -1192,7 +1210,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <ClawMachine
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 onNavigateToLobby={() => {
                   handleRequestTabChange('lobby');
                 }}
@@ -1207,7 +1225,7 @@ export default function App() {
             <div className="w-full h-full overflow-hidden animate-fade-in">
               <TraditionalPinballGame
                 balance={balance}
-                onUpdateBalance={(newBal) => setBalance(newBal)}
+                onUpdateBalance={handleUpdateBalance}
                 onNavigateToLobby={() => {
                   handleRequestTabChange('lobby');
                 }}
@@ -1227,7 +1245,7 @@ export default function App() {
           refreshInventoryCount();
         }}
         balance={balance}
-        onUpdateBalance={(newBal) => setBalance(newBal)}
+        onUpdateBalance={handleUpdateBalance}
         onNavigateToLobby={() => {
           handleRequestTabChange('lobby');
         }}
@@ -1252,6 +1270,7 @@ export default function App() {
         onOpenCareerStats={() => setIsCareerStatsModalOpen(true)}
         onOpenHotkeys={() => setIsHotkeysModalOpen(true)}
         onOpenPrologue={() => setIsPrologueOpen(true)}
+        onOpenCashOut={() => setIsCashOutOpen(true)}
       />
 
       {/* VIP Career Stats Modal */}

@@ -1929,6 +1929,8 @@ export function resetAllCasinoData(): void {
   localStorage.removeItem('casino_hub_active_tab_v1');
 
   // Clear Game-specific stats, history, shoe, bets
+  localStorage.removeItem('plinko_balls_inventory_v1');
+  localStorage.removeItem('pinball_balls_inventory_v1');
   localStorage.removeItem('plinko_stats_v2');
   localStorage.removeItem('plinko_history_v2');
   localStorage.removeItem('plinko_bet_v2');
