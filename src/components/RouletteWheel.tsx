@@ -338,10 +338,12 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   }, [isSpinning, targetNumber, sliceAngle]);
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-1 sm:p-2 select-none w-full">
-      {/* Outer Neon Glow Ring Frame with Dynamic Dramatic Camera Zoom */}
-      <div
-        className="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] lg:w-[360px] lg:h-[360px] xl:w-[390px] xl:h-[390px] rounded-full p-2 bg-radial from-stone-900 via-neutral-950 to-black border-2 border-amber-500/40 shadow-[0_0_35px_rgba(245,158,11,0.25)] flex items-center justify-center shrink-0 transition-transform duration-300 ease-out"
+    <div className="relative flex flex-col items-center justify-center p-0.5 sm:p-2 select-none w-full">
+      {/* Scaled responsive wrapper for mobile to prevent overflow */}
+      <div className="flex items-center justify-center scale-[0.76] xs:scale-[0.85] sm:scale-100 origin-center my-[-32px] xs:my-[-18px] sm:my-0 shrink-0">
+        {/* Outer Neon Glow Ring Frame with Dynamic Dramatic Camera Zoom */}
+        <div
+          className="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] lg:w-[360px] lg:h-[360px] xl:w-[390px] xl:h-[390px] rounded-full p-2 bg-radial from-stone-900 via-neutral-950 to-black border-2 border-amber-500/40 shadow-[0_0_35px_rgba(245,158,11,0.25)] flex items-center justify-center shrink-0 transition-transform duration-300 ease-out"
         style={{
           transform: `scale(${cameraZoom})`,
           boxShadow: isSpinning
@@ -516,14 +518,15 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
           </div>
         </div>
       </div>
+    </div>
 
       {/* Target Result Banner Under Wheel */}
-      <div className="mt-3 h-9 flex items-center justify-center">
+      <div className="mt-1 sm:mt-3 h-6 sm:h-9 flex items-center justify-center">
         {highlightNumber !== null ? (
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-stone-900/90 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-bounce">
-            <span className="text-xs text-stone-400 font-medium">開出號碼:</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-stone-900/90 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-bounce">
+            <span className="text-[10px] sm:text-xs text-stone-400 font-medium">開出號碼:</span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white ${
+              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black text-white ${
                 getNumberColor(highlightNumber) === 'green'
                   ? 'bg-emerald-600 ring-2 ring-emerald-400'
                   : getNumberColor(highlightNumber) === 'red'
@@ -533,7 +536,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
             >
               {highlightNumber}
             </span>
-            <span className="text-xs font-bold text-amber-400 uppercase">
+            <span className="text-[10px] sm:text-xs font-bold text-amber-400 uppercase">
               {getNumberColor(highlightNumber) === 'green'
                 ? '綠色 (ZERO)'
                 : getNumberColor(highlightNumber) === 'red'
@@ -542,12 +545,12 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
             </span>
           </div>
         ) : isSpinning ? (
-          <div className="text-xs text-amber-400/90 font-medium flex items-center gap-1.5 animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+          <div className="text-[10px] sm:text-xs text-amber-400/90 font-medium flex items-center gap-1.5 animate-pulse">
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 animate-ping"></span>
             輪盤飛速旋轉中...
           </div>
         ) : (
-          <div className="text-xs text-stone-500 font-medium">請在下方下注區放置籌碼後點擊旋轉</div>
+          <div className="text-[10px] sm:text-xs text-stone-500 font-medium">請在下方放置籌碼後點擊旋轉</div>
         )}
       </div>
     </div>

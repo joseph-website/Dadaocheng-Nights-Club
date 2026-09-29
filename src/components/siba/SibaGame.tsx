@@ -12,6 +12,7 @@ import {
   rollUntilValidSiba,
 } from '../../utils/siba';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { unlockHiddenCollectible } from '../../utils/inventory';
 import { toastService } from '../../utils/toast';
 import { checkHouseBonus, notifyHouseBonus, isAuraActive } from '../../utils/aura';
@@ -100,6 +101,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
   // Mobile View Tab state (bowl vs table)
   const [sibaMobileTab, setSibaMobileTab] = useState<'bowl' | 'table'>('bowl');
+  const [showMobileOdds, setShowMobileOdds] = useState(false);
 
   // Toast Aura state
   const [auraActive, setAuraActive] = useState<boolean>(() => isAuraActive());
@@ -204,10 +206,12 @@ export const SibaGame: React.FC<SibaGameProps> = ({
 
     if (balance < selectedChip) {
       sound.playLoss();
+      haptics.warning();
       toastService.warn('籌碼餘額不足，請選擇較低面額或重置籌碼！');
       return;
     }
 
+    haptics.selection();
     // Deduct chip from balance immediately
     const newTotal = totalBetAmount + selectedChip;
     onRoundBusyChange?.(true, newTotal);
@@ -341,6 +345,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     if (isRolling || currentBets.length === 0) return;
 
     sound.playClick();
+    haptics.medium();
     setIsRolling(true);
     setCupPhase('covering');
     setLastBets([...currentBets]);
@@ -367,6 +372,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     const shakeTimer = window.setTimeout(() => {
       setCupPhase('shaking');
       sound.playDiceShake();
+      haptics.light();
     }, shakeDelay);
     timeoutsRef.current.push(shakeTimer);
 
@@ -374,6 +380,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
     const revealTimer = window.setTimeout(() => {
       setCupPhase('revealing');
       sound.playDiceReveal();
+      haptics.heavy();
 
       // Directly set the final calculated dice values under the rising cup
       setDice(finalResult.dice);
@@ -466,8 +473,10 @@ export const SibaGame: React.FC<SibaGameProps> = ({
       const isWin = result.totalWon > 0;
       if (isWin) {
         sound.playWin();
+        haptics.success();
       } else {
         sound.playLoss();
+        haptics.light();
       }
 
       const winningHits = result.winningBets.map((b) => b.label).join('、');
@@ -586,17 +595,17 @@ export const SibaGame: React.FC<SibaGameProps> = ({
       <div
         id="game-visual-area"
         className={`${
-          sibaMobileTab === 'bowl' ? 'flex flex-col w-full' : 'hidden lg:flex'
+          sibaMobileTab === 'bowl' ? 'flex flex-col w-full flex-1 min-h-0' : 'hidden lg:flex'
         } ${
           isDesktopCollapsed ? 'lg:flex-1' : 'lg:w-[62%] xl:w-[65%]'
-        } h-full min-h-0 rounded-2xl bg-[#0b0d14] border border-amber-500/20 shadow-2xl p-2 sm:p-3 justify-between items-center relative overflow-hidden transition-all duration-700`}
+        } lg:h-full rounded-2xl bg-[#0b0d14] border border-amber-500/20 shadow-2xl p-1.5 sm:p-3 justify-between items-center relative overflow-hidden transition-all duration-700`}
       >
         {/* Floating 2-Second Auto-Fading Win Toast inside #game-visual-area */}
         <WinToast toast={winToast} onDismiss={() => setWinToast(null)} />
 
         {/* Top Active Bets Status Bar Badge */}
         {totalBetAmount > 0 && (
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-950/90 border border-amber-400/70 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-in zoom-in-95">
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-stone-950/90 border border-amber-400/70 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-in zoom-in-95">
             <CasinoChip amount={totalBetAmount} size="xs" />
             <div className="flex flex-col leading-tight">
               <span className="text-[9px] text-stone-400 font-bold uppercase">
@@ -612,7 +621,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
 
 
         {/* Center: Authentic Black-Glazed Ceramic Bowl (黑釉瓷碗) Stage */}
-        <div className="flex-1 w-full flex items-center justify-center overflow-hidden min-h-[160px] sm:min-h-[200px]">
+        <div className="flex-1 w-full flex items-center justify-center overflow-hidden min-h-0 py-0 sm:py-1">
           <CeramicBowl
             dice={dice}
             isRolling={isRolling}
@@ -623,19 +632,30 @@ export const SibaGame: React.FC<SibaGameProps> = ({
         </div>
 
         {/* Mobile Quick Bets Bar: Direct on-screen betting for bowl view */}
-        <div className="w-full flex flex-col gap-1 my-1 lg:hidden shrink-0">
+        <div className="w-full flex flex-col gap-1 my-0.5 sm:my-1 lg:hidden shrink-0">
           <div className="flex items-center justify-between text-[11px] px-1 text-stone-300 font-bold">
             <span className="flex items-center gap-1 text-amber-300">
-              <Info className="w-3 h-3 text-amber-400" />
-              <span>快速下注 (點擊即押注 ${selectedChip})</span>
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>快速下注 (${selectedChip})</span>
             </span>
-            <button
-              onClick={() => setSibaMobileTab('table')}
-              className="text-[10px] text-amber-400 underline underline-offset-2 flex items-center gap-0.5"
-            >
-              <span>完整盤面</span>
-              <ChevronDown className="w-2.5 h-2.5 rotate-270" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileOdds((prev) => !prev)}
+                className="text-[10px] text-stone-400 hover:text-amber-300 flex items-center gap-0.5 cursor-pointer py-0.5 px-1.5 rounded bg-stone-900/80 border border-stone-800"
+                title="查看十八仔賠率標準"
+              >
+                <Info className="w-2.5 h-2.5 text-amber-400" />
+                <span>{showMobileOdds ? '收起賠率' : '賠率'}</span>
+              </button>
+              <button
+                onClick={() => setSibaMobileTab('table')}
+                className="text-[10px] text-amber-400 underline underline-offset-2 flex items-center gap-0.5"
+              >
+                <span>完整盤面</span>
+                <ChevronDown className="w-2.5 h-2.5 rotate-270" />
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-1 w-full text-[10px] font-bold">
             {/* Big */}
@@ -777,8 +797,12 @@ export const SibaGame: React.FC<SibaGameProps> = ({
           </div>
         </div>
 
-        {/* Bottom Quick Odds Bar */}
-        <div className="w-full mt-1 px-2.5 py-1 rounded-xl bg-[#07090e]/90 border border-stone-800/80 text-[10px] text-stone-400 flex items-center justify-between shrink-0 overflow-x-auto">
+        {/* Bottom Quick Odds Bar: Collapsible on mobile, scrollbar-none to eliminate ugly browser scrollbar */}
+        <div
+          className={`${
+            showMobileOdds ? 'flex' : 'hidden sm:flex'
+          } w-full mt-0.5 sm:mt-1 px-2.5 py-1 rounded-xl bg-[#07090e]/90 border border-stone-800/80 text-[10px] text-stone-400 items-center justify-between shrink-0 overflow-x-auto scrollbar-none animate-in fade-in duration-200`}
+        >
           <div className="flex items-center gap-1 text-amber-300 font-bold shrink-0">
             <Info className="w-3.5 h-3.5 text-amber-400" />
             <span>十八仔賠率標準:</span>
@@ -803,7 +827,7 @@ export const SibaGame: React.FC<SibaGameProps> = ({
         </div>
 
         {/* COMPACT MOBILE & TABLET ACTION DOCK (手機與平板專屬快捷操作列) */}
-        <div className="w-full flex items-center justify-between gap-1 sm:gap-2 px-2 py-1.5 mt-1 bg-stone-900/95 rounded-xl border border-stone-800/90 shadow-xl shrink-0 lg:hidden">
+        <div className="w-full flex items-center justify-between gap-1 sm:gap-2 px-2 py-1.5 mt-auto bg-stone-900/95 rounded-xl border border-stone-800/90 shadow-2xl shrink-0 lg:hidden sticky bottom-0 z-20 backdrop-blur-md">
           {/* Quick Chip Selector Pills */}
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5 shrink-0 max-w-[110px] sm:max-w-none">
             {[10, 50, 100, 500, 1000].map((amt) => (
@@ -892,11 +916,11 @@ export const SibaGame: React.FC<SibaGameProps> = ({
       {/* ==================== RIGHT COLUMN: BETTING TABLE & SIDEBAR ==================== */}
       <div
         className={`${
-          sibaMobileTab === 'table' ? 'flex flex-col w-full h-full' : 'hidden lg:flex'
+          sibaMobileTab === 'table' ? 'flex flex-col w-full flex-1 min-h-0' : 'hidden lg:flex'
         } transition-all duration-300 ${
           isDesktopCollapsed
             ? 'lg:w-11 lg:h-full lg:justify-center lg:items-center'
-            : 'lg:w-[38%] xl:w-[35%] h-full flex flex-col justify-between gap-1.5 sm:gap-2'
+            : 'lg:w-[38%] xl:w-[35%] lg:h-full flex flex-col justify-between gap-1.5 sm:gap-2'
         } overflow-hidden shrink-0 relative`}
       >
         {isDesktopCollapsed ? (

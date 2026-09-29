@@ -11,6 +11,7 @@ import {
   SHOE_RESHUFFLE_THRESHOLD,
 } from '../../utils/blackjack';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { unlockHiddenCollectible } from '../../utils/inventory';
 import { toastService } from '../../utils/toast';
 import { checkHouseBonus, notifyHouseBonus, isAuraActive } from '../../utils/aura';
@@ -325,8 +326,8 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
   // Handle clicking a chip in ChipSelector tray or quick chip pills
   const handleChipClick = (amount: number) => {
     onSelectChip?.(amount);
-    if (phase === 'round_over') {
-      setPhase('betting');
+    if (phase === 'settled') {
+      handlePlayAgain();
       handlePlaceBet(amount);
     } else if (phase === 'betting') {
       handlePlaceBet(amount);
@@ -405,9 +406,11 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
   const handleDeal = () => {
     if (phase !== 'betting' || currentBet === 0) {
       toastService.warn('請先在下注區放置籌碼！');
+      haptics.warning();
       return;
     }
 
+    haptics.medium();
     setLastRoundBet(currentBet);
     localStorage.setItem(STORAGE_KEYS.BJ_PREV_BET, currentBet.toString());
     setBetHistoryStack([]);
@@ -681,6 +684,7 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
   const handleHit = () => {
     if (phase !== 'player_turn') return;
     sound.playCardDeal();
+    haptics.light();
 
     if (!isSplit) {
       const { card, newShoe } = drawCard(shoe, false);
@@ -767,9 +771,11 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
       if (playerHand.cards.length !== 2) return;
       if (balance < currentBet) {
         toastService.warn('籌碼餘額不足以雙倍下注！');
+        haptics.warning();
         return;
       }
 
+      haptics.heavy();
       const doubledTotalBet = currentBet * 2;
       onRoundBusyChange?.(true, doubledTotalBet);
       sound.playChip();
@@ -851,6 +857,7 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
   // Player Stand
   const handleStand = () => {
     if (phase !== 'player_turn') return;
+    haptics.medium();
 
     if (!isSplit) {
       handleStandWithCards(playerHand, shoe, isDouble, currentBet);
@@ -1600,8 +1607,8 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
                     onClick={() => {
                       if (phase === 'betting') {
                         handlePlaceBet(selectedChip);
-                      } else if (phase === 'round_over') {
-                        setPhase('betting');
+                      } else if (phase === 'settled') {
+                        handlePlayAgain();
                         handlePlaceBet(selectedChip);
                       }
                     }}
@@ -1906,7 +1913,7 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
             </div>
           )}
 
-          {phase === 'round_over' && (
+          {phase === 'settled' && (
             <div className="w-full flex items-center justify-between gap-1.5">
               <button
                 onClick={handlePlayAgain}
@@ -2269,7 +2276,7 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
           <ChipSelector
             selectedChip={selectedChip}
             onSelectChip={handleChipClick}
-            disabled={phase !== 'betting' && phase !== 'round_over'}
+            disabled={phase !== 'betting' && phase !== 'settled'}
             balance={balance}
           />
         </div>
@@ -2686,7 +2693,7 @@ export const BlackjackTable: React.FC<BlackjackTableProps> = ({
                       onSelectChip?.(val);
                       sound.playChip();
                     }}
-                    disabled={phase !== 'betting' && phase !== 'round_over'}
+                    disabled={phase !== 'betting' && phase !== 'settled'}
                     balance={balance}
                   />
                 </div>

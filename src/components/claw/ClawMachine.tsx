@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { toastService } from '../../utils/toast';
 import { recordCareerRound } from '../../utils/careerStats';
 import { dispatchBetAction } from '../../utils/tableIntel';
@@ -462,12 +463,14 @@ export const ClawMachine: React.FC<ClawMachineProps> = ({
 
     if (balance < COST_PER_PLAY) {
       sound.playLoss();
+      haptics.warning();
       toastService.warn('籌碼餘額不足 $100，請先至大廳櫃台兌現或在各遊戲獲取！');
       return;
     }
 
     sound.playChip();
     sound.playCoinPayout();
+    haptics.medium();
     onRoundBusyChange?.(true, COST_PER_PLAY);
     onUpdateBalance(balance - COST_PER_PLAY);
     dispatchBetAction({ gameId: 'claw', betType: 'coin', amount: COST_PER_PLAY });
@@ -483,6 +486,7 @@ export const ClawMachine: React.FC<ClawMachineProps> = ({
     isOperatingRef.current = true;
     setIsAnimating(true);
     stopMoving();
+    haptics.heavy();
 
     setStats((prev) => ({ ...prev, plays: prev.plays + 1 }));
     recordCareerRound({

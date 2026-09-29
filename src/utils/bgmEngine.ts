@@ -66,9 +66,9 @@ class BgmEngine {
 
   // Custom Audio Element (for local MP3s)
   private audioElement: HTMLAudioElement | null = null;
-  private audioSourceNode: MediaElementAudioSourceNode | null = null;
   private customTrackUrl: string | null = null;
   private customTrackName: string | null = null;
+  private isMuted: boolean = false;
 
   private listeners: Set<BgmListener> = new Set();
 
@@ -127,13 +127,38 @@ class BgmEngine {
     if (typeof window !== 'undefined') {
       localStorage.setItem('casino_bgm_volume', this.volume.toString());
     }
+    const effectiveVol = this.isMuted ? 0 : this.volume;
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+      try {
+        this.masterGain.gain.setValueAtTime(effectiveVol, this.ctx.currentTime);
+      } catch {
+        // Safe against AudioContext state
+      }
     }
     if (this.audioElement) {
-      this.audioElement.volume = this.volume;
+      this.audioElement.volume = effectiveVol;
     }
     this.notify();
+  }
+
+  public setMuted(muted: boolean) {
+    this.isMuted = muted;
+    const effectiveVol = muted ? 0 : this.volume;
+    if (this.masterGain && this.ctx) {
+      try {
+        this.masterGain.gain.setValueAtTime(effectiveVol, this.ctx.currentTime);
+      } catch {
+        // Safe against AudioContext state
+      }
+    }
+    if (this.audioElement) {
+      this.audioElement.volume = effectiveVol;
+    }
+    this.notify();
+  }
+
+  public getIsMuted(): boolean {
+    return this.isMuted;
   }
 
   private initCtx() {
@@ -144,12 +169,17 @@ class BgmEngine {
       if (AudioCtx) {
         this.ctx = new AudioCtx();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        const effectiveVol = this.isMuted ? 0 : this.volume;
+        this.masterGain.gain.setValueAtTime(effectiveVol, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      try {
+        this.ctx.resume().catch(() => {});
+      } catch {
+        // Browser gesture restriction safeguard
+      }
     }
   }
 
@@ -530,7 +560,7 @@ class BgmEngine {
     spaceGain.gain.exponentialRampToValueAtTime(0.16, now + 2.0);
 
     // Binaural Drone: 144Hz & 150Hz (6Hz Theta Beating)
-    [baseFreq, baseFreq + 6, baseFreq * 1.5, baseFreq * 2.25].forEach((freq, idx) => {
+    [baseFreq, baseFreq + 6, baseFreq * 1.5, baseFreq * 2.25].forEach((freq) => {
       if (!this.ctx) return;
       const osc = this.ctx.createOscillator();
       osc.type = 'sine';
@@ -705,8 +735,8 @@ class BgmEngine {
         this.isPlaying = true;
         this.notify();
       })
-      .catch((e) => {
-        console.warn('Custom audio playback requires user interaction:', e);
+      .catch(() => {
+        // Audio playback requires user interaction or codec support
       });
   }
 }

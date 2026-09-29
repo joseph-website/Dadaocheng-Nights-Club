@@ -28,8 +28,8 @@ export function initStorageNotifier() {
         }
       }, 0);
     };
-  } catch (e) {
-    console.warn('Storage notifier initialization warning:', e);
+  } catch {
+    // Storage access restricted (e.g. strict private browsing)
   }
 }
 

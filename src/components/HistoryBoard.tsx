@@ -17,7 +17,7 @@ export const HistoryBoard: React.FC<HistoryBoardProps> = ({
 }) => {
   if (history.length === 0) {
     return (
-      <div className="w-full p-2.5 rounded-xl bg-[#0e1017] border border-stone-800 text-center text-xs text-stone-500">
+      <div className="w-full py-1.5 px-2 rounded-xl bg-[#0e1017] border border-stone-800 text-center text-[10px] sm:text-xs text-stone-500">
         尚無開獎紀錄，請開始下注並旋轉輪盤！
       </div>
     );
@@ -79,7 +79,7 @@ export const HistoryBoard: React.FC<HistoryBoardProps> = ({
         </div>
 
         {/* Horizontal ribbon of recent 12 winning numbers */}
-        <div className="flex items-center gap-1.5 overflow-x-auto max-w-[280px] sm:max-w-[340px] pb-0.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[280px] sm:max-w-[340px] pb-0.5">
           {history.slice(0, 10).map((spin, idx) => {
             const color = spin.color;
             const isLatest = idx === 0;

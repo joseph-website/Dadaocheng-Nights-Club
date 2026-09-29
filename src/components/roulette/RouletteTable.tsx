@@ -16,6 +16,7 @@ import {
 import { BetItem, BetType, SpinResult } from '../../types/roulette';
 import { calculateSpinResult } from '../../utils/payout';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { toastService } from '../../utils/toast';
 import { recordCareerRound } from '../../utils/careerStats';
 import { dispatchBetAction } from '../../utils/tableIntel';
@@ -93,6 +94,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
   const [isRouletteDrawerOpen, setIsRouletteDrawerOpen] = useState(false);
   const [isRouletteDesktopCollapsed, setIsRouletteDesktopCollapsed] = useState(false);
   const [rouletteMobileTab, setRouletteMobileTab] = useState<'wheel' | 'table'>('wheel');
+  const [showMobileOdds, setShowMobileOdds] = useState(false);
 
   // Spin History
   const [history, setHistory] = useState<SpinResult[]>(() => {
@@ -166,10 +168,12 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
 
       if (balance < selectedChip) {
         sound.playLoss();
+        haptics.warning();
         toastService.warn('籌碼餘額不足，請選擇較小面額籌碼或重置籌碼！');
         return;
       }
 
+      haptics.selection();
       const id = type === 'straight' ? `straight-${value}` : type;
       const defaultLabel = label || id;
 
@@ -345,6 +349,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
   const handleSpin = useCallback(() => {
     if (isSpinning || bets.length === 0) return;
 
+    haptics.medium();
     setPreviousBets([...bets]);
     const winningNum = Math.floor(Math.random() * 37);
     setTargetNumber(winningNum);
@@ -353,7 +358,10 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
 
   // Spin completed handler
   const handleSpinComplete = useCallback(() => {
-    if (targetNumber === null) return;
+    if (targetNumber === null) {
+      setIsSpinning(false);
+      return;
+    }
 
     const result = calculateSpinResult(targetNumber, bets);
     setCurrentResult(result);
@@ -421,8 +429,10 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
     // Audio cue
     if (result.totalWon > 0) {
       sound.playWin();
+      haptics.success();
     } else {
       sound.playLoss();
+      haptics.light();
     }
 
     // Trigger auto-fading Toast notification inside #game-visual-area
@@ -540,29 +550,29 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
       <div
         id="game-visual-area"
         className={`${
-          rouletteMobileTab === 'wheel' ? 'flex flex-col w-full' : 'hidden lg:flex'
+          rouletteMobileTab === 'wheel' ? 'flex flex-col w-full flex-1 min-h-0' : 'hidden lg:flex'
         } ${
           isRouletteDesktopCollapsed ? 'lg:flex-1' : 'lg:w-[33%] xl:w-[30%]'
-        } h-full min-h-0 rounded-2xl bg-[#0b0d14] border border-amber-500/20 shadow-2xl p-2 sm:p-3 justify-between items-center relative overflow-hidden shrink-0 transition-all duration-700`}
+        } lg:h-full rounded-2xl bg-[#0b0d14] border border-amber-500/20 shadow-2xl p-1.5 sm:p-3 justify-between items-center relative overflow-y-auto lg:overflow-hidden shrink-0 transition-all duration-700 scrollbar-none`}
       >
         {/* Floating 2-Second Auto-Fading Win Toast located internally inside #game-visual-area */}
         <WinToast toast={winToast} onDismiss={() => setWinToast(null)} />
 
         {/* Active Bets Status Bar Badge */}
         {totalBet > 0 && (
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-950/90 border border-amber-400/70 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-in zoom-in-95">
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-stone-950/90 border border-amber-400/70 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-in zoom-in-95">
             <CasinoChip amount={totalBet} size="xs" />
             <div className="flex flex-col leading-tight">
-              <span className="text-[9px] text-stone-400 font-bold uppercase">賭桌當前押注</span>
-              <span className="font-mono font-black text-xs text-amber-300">
+              <span className="text-[9px] text-stone-400 font-bold uppercase">賭桌押注</span>
+              <span className="font-mono font-black text-[11px] sm:text-xs text-amber-300">
                 {totalBet.toLocaleString()} 點 ({bets.length} 處)
               </span>
             </div>
           </div>
         )}
 
-        {/* Wheel Viewport (Maximized game space) */}
-        <div className="flex-1 w-full flex items-center justify-center overflow-hidden min-h-[160px] sm:min-h-[180px]">
+        {/* Wheel Viewport (Maximized game space, flexes dynamically) */}
+        <div className="flex-1 w-full flex items-center justify-center overflow-hidden min-h-0 py-0 sm:py-1">
           <RouletteWheel
             isSpinning={isSpinning}
             targetNumber={targetNumber}
@@ -580,19 +590,30 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
         </div>
 
         {/* Mobile Quick Bets Bar: Visible on Wheel view for instant on-screen betting */}
-        <div className="w-full flex flex-col gap-1 my-1 lg:hidden shrink-0">
+        <div className="w-full flex flex-col gap-1 my-0.5 sm:my-1 lg:hidden shrink-0">
           <div className="flex items-center justify-between text-[11px] px-1 text-stone-300 font-bold">
             <span className="flex items-center gap-1 text-amber-300">
-              <Info className="w-3 h-3 text-amber-400" />
-              <span>快速下注 (點擊即押注 ${selectedChip})</span>
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>快速下注 (${selectedChip})</span>
             </span>
-            <button
-              onClick={() => setRouletteMobileTab('table')}
-              className="text-[10px] text-amber-400 underline underline-offset-2 flex items-center gap-0.5"
-            >
-              <span>全桌面</span>
-              <ChevronDown className="w-2.5 h-2.5 rotate-270" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileOdds((prev) => !prev)}
+                className="text-[10px] text-stone-400 hover:text-amber-300 flex items-center gap-0.5 cursor-pointer py-0.5 px-1.5 rounded bg-stone-900/80 border border-stone-800"
+                title="查看歐式輪盤賠率"
+              >
+                <Info className="w-2.5 h-2.5 text-amber-400" />
+                <span>{showMobileOdds ? '收起賠率' : '賠率'}</span>
+              </button>
+              <button
+                onClick={() => setRouletteMobileTab('table')}
+                className="text-[10px] text-amber-400 underline underline-offset-2 flex items-center gap-0.5"
+              >
+                <span>全桌面</span>
+                <ChevronDown className="w-2.5 h-2.5 rotate-270" />
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-6 gap-1 w-full text-[10px] font-bold">
             <button
@@ -646,8 +667,12 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
           </div>
         </div>
 
-        {/* Bottom Quick Odds Bar - Always visible */}
-        <div className="flex w-full px-2.5 py-1 rounded-xl bg-[#07090e]/90 border border-stone-800/80 text-[10px] text-stone-400 items-center justify-between shrink-0 overflow-x-auto">
+        {/* Collapsible / Responsive Odds Bar: Always on Desktop, Collapsible on Mobile */}
+        <div
+          className={`${
+            showMobileOdds ? 'flex' : 'hidden sm:flex'
+          } w-full px-2.5 py-1 rounded-xl bg-[#07090e]/90 border border-stone-800/80 text-[10px] text-stone-400 items-center justify-between shrink-0 overflow-x-auto my-0.5 animate-in fade-in duration-200`}
+        >
           <div className="flex items-center gap-1 text-amber-300 font-bold shrink-0">
             <Info className="w-3 h-3 text-amber-400" />
             <span>歐式輪盤賠率:</span>
@@ -659,20 +684,21 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
           </div>
         </div>
 
-        {/* COMPACT MOBILE & TABLET BOTTOM QUICK ACTION DOCK (收納式輪盤下注欄) */}
-        <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2 px-2 py-1.5 mt-1 bg-stone-900/95 rounded-xl border border-stone-800/90 shadow-xl shrink-0 lg:hidden">
+        {/* COMPACT MOBILE & TABLET BOTTOM QUICK ACTION DOCK (收納式輪盤下注欄) - STICKY SAFEGUARD */}
+        <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2 px-2 py-1.5 mt-auto bg-stone-900/95 rounded-xl border border-stone-800/90 shadow-2xl shrink-0 lg:hidden sticky bottom-0 z-20 backdrop-blur-md">
           {/* Chip Denomination Quick Switcher */}
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5 shrink-0 max-w-[120px] sm:max-w-none">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5 shrink-0 max-w-[125px] sm:max-w-none">
             {[10, 50, 100, 500, 1000].map((amt) => (
               <button
                 key={amt}
                 onClick={() => {
                   sound.playChip();
+                  haptics.selection();
                   setSelectedChip(amt);
                 }}
-                className={`px-1.5 py-1 rounded-md text-[10px] font-mono font-bold transition-all ${
+                className={`px-1.5 py-1 rounded-md text-[10px] font-mono font-bold transition-all active:scale-95 ${
                   selectedChip === amt
-                    ? 'bg-amber-500 text-stone-950 font-black shadow-sm'
+                    ? 'bg-amber-500 text-stone-950 font-black shadow-sm ring-1 ring-amber-300'
                     : 'bg-stone-950 text-stone-300 border border-stone-700'
                 }`}
               >
@@ -686,7 +712,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
             id="btn-mobile-roulette-spin"
             disabled={isSpinning || bets.length === 0}
             onClick={handleSpin}
-            className={`flex-1 min-h-[44px] px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm tracking-wide uppercase transition-all flex items-center justify-center gap-1.5 shadow-lg touch-manipulation active:scale-95 ${
+            className={`flex-1 min-h-[42px] px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm tracking-wide uppercase transition-all flex items-center justify-center gap-1.5 shadow-lg touch-manipulation active:scale-95 ${
               isSpinning
                 ? 'bg-stone-800 text-stone-500 cursor-not-allowed'
                 : bets.length > 0
@@ -704,7 +730,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
               {betHistoryStack.length > 0 && (
                 <button
                   onClick={handleUndoBet}
-                  className="p-2 min-h-[44px] min-w-[36px] rounded-xl bg-stone-800 text-stone-300 hover:text-white text-xs font-bold border border-stone-700 flex items-center justify-center active:scale-95 cursor-pointer"
+                  className="p-1.5 min-h-[42px] min-w-[34px] rounded-xl bg-stone-800 text-stone-300 hover:text-white text-xs font-bold border border-stone-700 flex items-center justify-center active:scale-95 cursor-pointer"
                   title="撤銷上一筆下注"
                 >
                   <Undo2 className="w-3.5 h-3.5" />
@@ -712,7 +738,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
               )}
               <button
                 onClick={handleClearBets}
-                className="p-2 min-h-[44px] min-w-[36px] rounded-xl bg-stone-800 text-rose-400 hover:text-rose-300 text-xs font-bold border border-stone-700 flex items-center justify-center active:scale-95 cursor-pointer"
+                className="p-1.5 min-h-[42px] min-w-[34px] rounded-xl bg-stone-800 text-rose-400 hover:text-rose-300 text-xs font-bold border border-stone-700 flex items-center justify-center active:scale-95 cursor-pointer"
                 title="清除全部下注"
               >
                 <XCircle className="w-3.5 h-3.5" />
@@ -720,7 +746,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
               {balance >= totalBet && (
                 <button
                   onClick={handleDoubleBets}
-                  className="px-2 py-1.5 min-h-[44px] rounded-xl bg-purple-950/80 text-purple-300 border border-purple-500/50 text-[11px] font-bold touch-manipulation active:scale-95 cursor-pointer"
+                  className="px-2 py-1 min-h-[42px] rounded-xl bg-purple-950/80 text-purple-300 border border-purple-500/50 text-[11px] font-bold touch-manipulation active:scale-95 cursor-pointer"
                   title="注碼加倍 (2X)"
                 >
                   2X
@@ -735,7 +761,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
             onClick={() => {
               setIsRouletteDrawerOpen((prev) => !prev);
             }}
-            className={`px-2.5 sm:px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 touch-manipulation active:scale-95 shrink-0 cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 min-h-[42px] rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 touch-manipulation active:scale-95 shrink-0 cursor-pointer ${
               bets.length > 0
                 ? 'bg-amber-950/90 text-amber-200 border-amber-500/80 ring-1 ring-amber-400/50'
                 : 'bg-stone-950 text-stone-200 border-stone-700 hover:border-amber-500/50'
@@ -752,11 +778,11 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({
       {/* Right Column: Full Casino Felt Betting Table, Chip Selector & Action Controls */}
       <div
         className={`${
-          rouletteMobileTab === 'table' ? 'flex flex-col w-full h-full' : 'hidden lg:flex'
+          rouletteMobileTab === 'table' ? 'flex flex-col w-full flex-1 min-h-0' : 'hidden lg:flex'
         } transition-all duration-300 ${
           isRouletteDesktopCollapsed
             ? 'lg:w-11 lg:h-full lg:justify-center lg:items-center'
-            : 'lg:w-[67%] xl:w-[70%] h-full flex flex-col justify-between gap-2 min-w-0'
+            : 'lg:w-[67%] xl:w-[70%] lg:h-full flex flex-col justify-between gap-2 min-w-0'
         } overflow-hidden shrink-0 relative`}
       >
         {isRouletteDesktopCollapsed ? (

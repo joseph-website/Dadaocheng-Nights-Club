@@ -4,6 +4,8 @@ export interface GlobalCasinoStats {
   totalRoundsPlayed: number;
   biggestSingleWin: number;
   biggestMultiplier: number;
+  highestBalance: number;
+  totalWinsCount: number;
   favoriteGame: string;
   favoriteGameSpent: number;
   gameRounds: {
@@ -271,6 +273,8 @@ export const getCareerStats = (): GlobalCasinoStats => {
     totalRoundsPlayed: 0,
     biggestSingleWin: 0,
     biggestMultiplier: 1,
+    highestBalance: 20000,
+    totalWinsCount: 0,
     favoriteGame: '尚無投注紀錄',
     favoriteGameSpent: 0,
     gameRounds: {
@@ -383,6 +387,11 @@ export const recordCareerRound = (params: {
   stats.totalRoundsPlayed += 1;
   stats.lastPlayedAt = Date.now();
 
+  // Track victories / clearance rounds
+  if (safeWin > 0) {
+    stats.totalWinsCount = (stats.totalWinsCount || 0) + 1;
+  }
+
   // Track rounds
   if (stats.gameRounds && stats.gameRounds[gameKey] !== undefined) {
     stats.gameRounds[gameKey] += 1;
@@ -435,6 +444,16 @@ export const recordCareerRound = (params: {
         },
       })
     );
+  }
+};
+
+export const updateCareerPeakBalance = (currentBalance: number): void => {
+  if (typeof window === 'undefined') return;
+  const safeBal = Math.max(0, Math.round(Number(currentBalance) || 0));
+  const stats = getCareerStats();
+  if (safeBal > (stats.highestBalance || 0)) {
+    stats.highestBalance = safeBal;
+    saveCareerStats(stats);
   }
 };
 

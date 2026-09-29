@@ -11,8 +11,10 @@ import {
   MoveUp,
   Zap,
   Trophy,
+  X,
 } from 'lucide-react';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { toastService } from '../../utils/toast';
 import { BALL_PACKAGES, BallPackage } from '../plinko/PlinkoControls';
 import { recordCareerRound } from '../../utils/careerStats';
@@ -223,6 +225,8 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
   const [isTilted, setIsTilted] = useState<boolean>(false);
   const [tiltCooldownRemaining, setTiltCooldownRemaining] = useState<number>(0);
   const [lastLaunchPull, setLastLaunchPull] = useState<number | null>(null);
+  const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
+  const [showBuyModal, setShowBuyModal] = useState<boolean>(false);
 
   // Refs for high-speed animation loop
   const springPullRef = useRef<number>(0);
@@ -861,6 +865,7 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
 
     updateBallsCount(ballsCountRef.current - 1);
     sound.playPop();
+    haptics.medium();
 
     sessionLaunchesRef.current += 1;
     if (sessionLaunchesRef.current >= 30) {
@@ -993,22 +998,26 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
       // Left Border Vintage Warning: 「重疊也算分數」
       ctx.save();
       ctx.fillStyle = '#fde047';
-      ctx.font = '900 7px sans-serif';
+      ctx.font = '900 8.5px sans-serif';
       ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 3;
       const leftText = '重疊也算分數';
       for (let i = 0; i < leftText.length; i++) {
-        ctx.fillText(leftText[i], 16, 170 + i * 11);
+        ctx.fillText(leftText[i], 16, 168 + i * 12);
       }
       ctx.restore();
 
-      // Right Launcher Border Vintage Slogan: 「每局10元 四顆球分數加總」
+      // Right Launcher Border Vintage Slogan: 「四顆球分數加總」
       ctx.save();
       ctx.fillStyle = '#fde047';
-      ctx.font = 'bold 7px sans-serif';
+      ctx.font = '900 8.5px sans-serif';
       ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 3;
       const rightText = '四顆球分數加總';
       for (let i = 0; i < rightText.length; i++) {
-        ctx.fillText(rightText[i], 406, 200 + i * 13);
+        ctx.fillText(rightText[i], 406, 196 + i * 13.5);
       }
       ctx.restore();
 
@@ -1166,27 +1175,50 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
         ctx.lineWidth = 1.0;
         ctx.stroke();
 
-        // Authentic White Paper Sticker Badge with Red Bold Score Numbers (僅保留分數，無冗贅文字)
-        const tagW = hole.points >= 100 ? 21 : 15;
-        const tagH = 9.0;
+        // Authentic Badge with Bold Score Numbers (分級高對比度標籤，清晰易讀)
+        const isJackpot = hole.points >= 100;
+        const tagW = isJackpot ? 25 : 18;
+        const tagH = 11.0;
         const tagX = hole.x - tagW / 2;
-        const tagY = hole.y + hole.radius + 1.2;
+        const tagY = hole.y + hole.radius + 1.5;
 
         ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.roundRect(tagX, tagY, tagW, tagH, 2);
-        ctx.fill();
-        ctx.stroke();
+        if (isJackpot) {
+          // Golden gradient for high-value jackpot holes (100, 150, 200, 300)
+          const goldGrad = ctx.createLinearGradient(tagX, tagY, tagX, tagY + tagH);
+          goldGrad.addColorStop(0, '#fef08a');
+          goldGrad.addColorStop(1, '#f59e0b');
+          ctx.fillStyle = goldGrad;
+          ctx.strokeStyle = '#b45309';
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.roundRect(tagX, tagY, tagW, tagH, 2.5);
+          ctx.fill();
+          ctx.stroke();
 
-        // Red bold score point text
-        ctx.fillStyle = '#dc2626';
-        ctx.font = '900 7.5px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${hole.points}`, hole.x, tagY + tagH / 2 + 0.5);
+          // Dark crimson bold jackpot score text
+          ctx.fillStyle = '#7f1d1d';
+          ctx.font = '900 9.5px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${hole.points}`, hole.x, tagY + tagH / 2 + 0.5);
+        } else {
+          // Crisp bright white badge with bold red score text
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.roundRect(tagX, tagY, tagW, tagH, 2.5);
+          ctx.fill();
+          ctx.stroke();
+
+          // High-contrast red bold score point text
+          ctx.fillStyle = '#dc2626';
+          ctx.font = '900 8.5px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${hole.points}`, hole.x, tagY + tagH / 2 + 0.5);
+        }
         ctx.restore();
       });
 
@@ -2784,7 +2816,7 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
   return (
     <div
       id="traditional-pinball-container"
-      className="w-full h-full flex flex-col items-center justify-between p-2 sm:p-2.5 md:p-3 bg-[#0a0c12] text-stone-100 select-none overflow-y-auto lg:overflow-hidden"
+      className="w-full h-full flex flex-col items-center justify-start lg:justify-between p-2 sm:p-2.5 md:p-3 bg-[#0a0c12] text-stone-100 select-none overflow-x-hidden overflow-y-auto lg:overflow-hidden"
     >
       {/* Top Header Bar */}
       <div className="w-full max-w-5xl flex items-center justify-between border-b border-stone-800/80 pb-1.5 mb-1.5 shrink-0">
@@ -2801,6 +2833,15 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
           <h2 className="text-base sm:text-lg font-black text-amber-400 flex items-center gap-1.5">
             <span>🔴 夜市打彈珠</span>
           </h2>
+          <button
+            type="button"
+            onClick={() => setShowRulesModal(true)}
+            className="px-2 py-1 rounded-lg bg-stone-900 border border-stone-800 text-stone-400 hover:text-amber-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+            title="查看操作玩法說明"
+          >
+            <Info className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">玩法說明</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
@@ -2819,9 +2860,9 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
       </div>
 
       {/* Main Two-Column Layout (Left: Pinball Machine Canvas, Right: Operator Controls) */}
-      <div className="w-full max-w-5xl flex-1 flex flex-col lg:flex-row items-center lg:items-center justify-center gap-2.5 sm:gap-4 min-h-0">
-        {/* LEFT COLUMN: Pinball Machine Game Table */}
-        <div className="w-full max-w-[390px] sm:max-w-[420px] lg:max-w-[395px] xl:max-w-[420px] shrink-0 flex flex-col items-center">
+      <div className="w-full max-w-5xl flex-1 flex flex-col lg:flex-row items-center lg:items-center justify-center gap-2 sm:gap-4 min-h-0">
+        {/* LEFT COLUMN: Pinball Machine Game Table (+ Integrated Mobile Controls on Mobile) */}
+        <div className="w-full max-w-[440px] sm:max-w-[470px] lg:max-w-[490px] xl:max-w-[520px] shrink-0 flex flex-col items-center gap-1.5">
           {/* Machine Cabinet Frame with Realistic Tilt/Nudge Spring Shake */}
           <div
             id="pinball-cabinet-frame"
@@ -2829,19 +2870,34 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
               transform: `translate(${nudgeOffset.x}px, ${nudgeOffset.y}px)`,
               transition: nudgeOffset.x === 0 && nudgeOffset.y === 0 ? 'transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
             }}
-            className="relative rounded-2xl border-4 border-[#78350f] shadow-[0_16px_40px_rgba(0,0,0,0.9)] overflow-hidden bg-[#1e140d] w-full flex justify-center max-h-[calc(100vh-80px)]"
+            className="relative rounded-2xl border-4 border-[#78350f] shadow-[0_16px_40px_rgba(0,0,0,0.9)] overflow-hidden bg-[#1e140d] aspect-[420/650] h-[min(62vh,calc(100vh-140px))] sm:h-[min(65vh,calc(100vh-135px))] lg:h-[calc(100vh-85px)] lg:max-h-[760px] w-auto max-w-[calc(100vw-16px)] flex items-center justify-center shrink-0"
           >
             <canvas
               ref={canvasRef}
               width={420}
               height={650}
-              className="block w-full h-auto max-h-[calc(100vh-88px)] object-contain"
+              className="block w-full h-full object-contain"
             />
+
+            {/* Absolute Floating HUD Banner for Last Win (Zero Layout Shift - 絕不擠壓破壞畫面) */}
+            <div
+              className={`absolute top-2 left-2 right-12 z-20 pointer-events-none transition-all duration-300 ease-out ${
+                lastWin ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-2 scale-95'
+              }`}
+            >
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-stone-950/90 border border-amber-400/80 shadow-[0_4px_16px_rgba(0,0,0,0.9)] backdrop-blur-md text-amber-300 text-xs font-mono font-bold">
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-bounce" />
+                  <span>落入【{lastWin?.label || 0}分】孔</span>
+                </div>
+                <span className="text-emerald-400 font-black text-sm">+{lastWin?.payout || 0} 籌碼</span>
+              </div>
+            </div>
 
             {/* Interactive Spring Plunger on Canvas Right Margin */}
             <div
               id="pinball-plunger-area"
-              className="absolute bottom-2 right-[9px] w-7 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
+              className="absolute bottom-2 right-[7.2%] w-7 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
               title="按住拉桿蓄力 (1秒往返循環)"
               onPointerDown={(e) => {
                 if (ballsCount <= 0 || isLaunchingRef.current) return;
@@ -2888,10 +2944,165 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
               </div>
             </div>
           </div>
+
+          {/* ========================================================================= */}
+          {/* MOBILE ONLY: INTEGRATED ERGONOMIC CONTROL DOCK (零位移、極致手感) */}
+          {/* ========================================================================= */}
+          <div className="w-full lg:hidden flex flex-col gap-1.5 p-2 rounded-2xl bg-gradient-to-b from-stone-900 via-[#131722] to-stone-950 border border-stone-800 shadow-xl shrink-0">
+            {/* Row 1: Left Nudge (A), Hero Center Launch / Buy Button, Right Nudge (D) */}
+            <div className="flex items-stretch gap-1.5 w-full h-[52px]">
+              {/* Nudge Left (A) */}
+              <button
+                type="button"
+                disabled={isTilted}
+                onClick={() => nudgeMachine('left')}
+                className="w-14 sm:w-16 shrink-0 rounded-xl bg-stone-950 hover:bg-stone-800 border border-stone-700/80 active:scale-95 text-stone-200 text-xs font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all touch-manipulation shadow-sm"
+                title="拍擊左側 (A)"
+              >
+                <MoveLeft className="w-4 h-4 text-amber-400" />
+                <span className="text-[10px] whitespace-nowrap">拍左</span>
+              </button>
+
+              {/* Center Hero Launch / Power Button (When balls > 0) OR Quick Buy Button (When balls = 0) */}
+              {ballsCount > 0 ? (
+                <button
+                  id="btn-pinball-launch-mobile"
+                  disabled={isLaunchingRef.current}
+                  onPointerDown={(e) => {
+                    if (isLaunchingRef.current) return;
+                    e.preventDefault();
+                    isPullingRef.current = true;
+                    pullStartTimestampRef.current = performance.now();
+                    setIsPulling(true);
+                    try {
+                      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  onPointerUp={(e) => {
+                    e.preventDefault();
+                    if (isPullingRef.current) {
+                      const launchPull = springPullRef.current;
+                      isPullingRef.current = false;
+                      setIsPulling(false);
+                      launchMarble(launchPull);
+                    }
+                    try {
+                      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  className={`relative touch-none flex-1 h-full py-1.5 px-2 rounded-xl font-black tracking-wider flex flex-col items-center justify-center overflow-hidden transition-all cursor-pointer select-none active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isPulling
+                      ? 'bg-amber-400 text-stone-950 shadow-[0_0_20px_rgba(251,191,36,0.9)]'
+                      : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-stone-950 shadow-md'
+                  }`}
+                >
+                  {/* Live Embedded Progress Fill */}
+                  {isPulling && (
+                    <div
+                      className="absolute inset-0 bg-gradient-to-r from-emerald-500/40 via-amber-500/60 to-rose-500/80 pointer-events-none transition-none"
+                      style={{ width: `${Math.max(4, springPull)}%` }}
+                    />
+                  )}
+
+                  {/* Button Content */}
+                  <div className="relative z-10 flex items-center justify-center gap-1.5 leading-tight whitespace-nowrap overflow-hidden">
+                    {isPulling ? (
+                      <>
+                        <Sparkles className="w-4 h-4 animate-spin text-stone-950 shrink-0" />
+                        <span className="font-mono text-sm font-black text-stone-950 truncate">
+                          ⚡ 蓄力 {Math.round(springPull)}% ({pullDirection === 'up' ? '▲' : '▼'})
+                        </span>
+                        <span className="text-[11px] font-black text-rose-950 ml-1 shrink-0">鬆開擊發！</span>
+                      </>
+                    ) : (
+                      <>
+                        <CircleDot className="w-4 h-4 text-stone-950 shrink-0" />
+                        <span className="font-black text-xs sm:text-sm text-stone-950 truncate">
+                          按住蓄力 • 鬆開擊發
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {!isPulling && (
+                    <span className="relative z-10 text-[10px] text-stone-900/80 font-mono mt-0.5 truncate">
+                      {lastLaunchPull !== null ? `上次力道 ${lastLaunchPull}% • ` : ''}剩 {ballsCount} 顆
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowBuyModal(true)}
+                  className="relative touch-none flex-1 h-full py-1.5 px-2 rounded-xl font-black text-xs sm:text-sm tracking-wider flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-stone-950 shadow-lg active:scale-98 cursor-pointer animate-pulse"
+                >
+                  <ShoppingCart className="w-4 h-4 text-stone-950 shrink-0" />
+                  <span className="font-black text-xs sm:text-sm">彈珠已用盡 • 點此購買彈珠</span>
+                </button>
+              )}
+
+              {/* Nudge Right (D) */}
+              <button
+                type="button"
+                disabled={isTilted}
+                onClick={() => nudgeMachine('right')}
+                className="w-14 sm:w-16 shrink-0 rounded-xl bg-stone-950 hover:bg-stone-800 border border-stone-700/80 active:scale-95 text-stone-200 text-xs font-bold flex flex-col items-center justify-center gap-0.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all touch-manipulation shadow-sm"
+                title="拍擊右側 (D)"
+              >
+                <MoveRight className="w-4 h-4 text-amber-400" />
+                <span className="text-[10px] whitespace-nowrap">拍右</span>
+              </button>
+            </div>
+
+            {/* Row 2: Secondary Bar: Nudge Up, Fixed-Width Sensor Status, Buy Balls Modal Trigger */}
+            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+              <button
+                type="button"
+                disabled={isTilted}
+                onClick={() => nudgeMachine('up')}
+                className="py-1 px-2.5 rounded-lg bg-stone-950 border border-stone-800 text-[11px] font-bold text-stone-300 flex items-center gap-1 active:scale-95 cursor-pointer disabled:opacity-30 transition-all shrink-0"
+              >
+                <MoveUp className="w-3 h-3 text-amber-400" />
+                <span>頂上 (W)</span>
+              </button>
+
+              {/* Fixed-Width Tilt Sensor Status Badge (Prevents horizontal jitter) */}
+              <div className="flex-1 flex justify-center">
+                <span
+                  className={`w-28 text-center px-2 py-0.5 rounded text-[10px] font-mono font-bold border truncate ${
+                    isTilted
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse'
+                      : nudgeCount >= 2
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  }`}
+                >
+                  {isTilted
+                    ? `🚨 TILT! (${tiltCooldownRemaining}s)`
+                    : nudgeCount >= 2
+                    ? `⚠️ 震盪 (${nudgeCount}/3)`
+                    : '🟢 感應正常'}
+                </span>
+              </div>
+
+              {/* Buy Balls Button (Opens Modal, Zero Layout Shift) */}
+              <button
+                type="button"
+                onClick={() => setShowBuyModal(true)}
+                className="py-1 px-2.5 rounded-lg bg-stone-900 border border-amber-500/40 text-[11px] font-bold text-amber-300 flex items-center gap-1 active:scale-95 cursor-pointer transition-all hover:bg-amber-500/20 shrink-0"
+              >
+                <ShoppingCart className="w-3 h-3 text-amber-400" />
+                <span>購買彈珠</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* RIGHT COLUMN: Operator Control Console (所有操作選項整合於右側) */}
-        <div className="w-full max-w-[420px] lg:flex-1 lg:max-w-[460px] flex flex-col gap-2.5 sm:gap-3">
+        {/* RIGHT COLUMN: Operator Control Console (DESKTOP ONLY: 所有操作選項整合於右側) */}
+        <div className="hidden lg:flex w-full lg:flex-1 lg:max-w-[480px] xl:max-w-[500px] flex-col gap-2.5 sm:gap-3">
           {/* Card 1: Last Win & Hole Score Banner (純孔洞位置計分) */}
           <div className="bg-stone-900/90 border border-stone-800 rounded-xl p-2.5 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-2">
@@ -3140,7 +3351,7 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Nudge Table Strategy & Keyboard Hints */}
+          {/* Card 4: Nudge Table Strategy & Keyboard Hints */}
           <div className="bg-stone-900/70 border border-stone-800 rounded-xl p-2.5 flex flex-col gap-1 text-[11px] text-stone-400">
             <div className="flex items-center gap-1.5 text-stone-300 font-bold">
               <Info className="w-3.5 h-3.5 text-amber-400" />
@@ -3154,7 +3365,7 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
             </p>
           </div>
 
-          {/* Card 4: Ball Packages Purchase (Shares inventory with Plinko) */}
+          {/* Card 5: Ball Packages Purchase (Shares inventory with Plinko) */}
           <div className="bg-stone-900/90 border border-stone-800 rounded-xl p-3 flex flex-col gap-2 shadow-md">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs text-stone-300 font-bold">
@@ -3183,6 +3394,109 @@ export const TraditionalPinballGame: React.FC<PinballGameProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Rules & Strategy Modal (Accessible on both Mobile & Desktop) */}
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-stone-900 border border-stone-700 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 text-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <h3 className="text-base font-black text-amber-400 flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                夜市打彈珠 • 操作與得分規則
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(false)}
+                className="w-7 h-7 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2.5 text-xs text-stone-300 leading-relaxed max-h-[60vh] overflow-y-auto">
+              <div className="p-3 rounded-xl bg-stone-950/80 border border-stone-800">
+                <span className="font-bold text-amber-300 block mb-1">🎯 手動蓄力與發射：</span>
+                按住發射按鈕（或鍵盤空白鍵），蓄力條以每秒 0%~100% 循環往返，鬆開瞬間決定發射力道！彈珠沿右側弧軌衝向頂端並滑入釘板。若發射力道不足未能翻過頂弧，彈珠將順管滑回自動歸還。
+              </div>
+              <div className="p-3 rounded-xl bg-stone-950/80 border border-stone-800">
+                <span className="font-bold text-amber-300 block mb-1">⚡ 機台搖晃微動 (Nudge)：</span>
+                在彈珠滾落釘板時，點擊「拍左」、「拍右」或「頂上」（鍵盤 A/D/W 或方向鍵）輕拍機台，可微調滾動路徑，亦有機會將剛落孔彈珠震出再戰！注意：短時間內連續劇烈拍擊 3 次將觸發 TILT 防弊警報並鎖死機台數秒。
+              </div>
+              <div className="p-3 rounded-xl bg-stone-950/80 border border-stone-800">
+                <span className="font-bold text-amber-300 block mb-1">🏆 盤面孔洞得分：</span>
+                盤面上分佈 54 個精密黃銅孔洞，依孔洞標記點數直接結算籌碼！中央皇冠孔為 150分/100分 特獎孔，底端橫樑亦有 20~30 分孔洞，其餘彈珠滑入底部退珠槽。
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowRulesModal(false)}
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs cursor-pointer shadow-md"
+            >
+              我知道了，開始遊玩
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Buy Balls Modal (Shares inventory with Plinko, Zero Layout Shift) */}
+      {showBuyModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm bg-stone-900 border border-amber-500/40 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 text-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="text-base font-black text-amber-400">購買彈珠套餐</h3>
+                  <span className="text-[10px] text-stone-400">與金字塔彈珠台共用庫存</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBuyModal(false)}
+                className="w-7 h-7 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Current Balance & Balls Overview */}
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-stone-950 border border-stone-800 text-xs font-mono">
+              <span className="text-stone-400">當前籌碼: <strong className="text-emerald-400 font-bold">${balance.toLocaleString()}</strong></span>
+              <span className="text-stone-400">現有彈珠: <strong className="text-amber-400 font-bold">{ballsCount} 顆</strong></span>
+            </div>
+
+            {/* Packages Grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {BALL_PACKAGES.map((pkg) => (
+                <button
+                  key={pkg.balls}
+                  type="button"
+                  onClick={() => {
+                    handleBuyBalls(pkg);
+                    setShowBuyModal(false);
+                  }}
+                  className="p-3 rounded-xl border border-amber-500/40 bg-stone-950 hover:bg-amber-500/20 text-amber-300 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-md group"
+                >
+                  <span className="font-black text-sm group-hover:text-amber-200">{pkg.label}</span>
+                  <span className="font-mono text-stone-400 text-xs font-bold">${pkg.cost.toLocaleString()}</span>
+                  {pkg.discount && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-rose-500/20 text-rose-300 rounded font-normal">
+                      {pkg.discount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowBuyModal(false)}
+              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs cursor-pointer"
+            >
+              返回遊戲
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

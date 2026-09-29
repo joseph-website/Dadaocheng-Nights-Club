@@ -1533,6 +1533,32 @@ export const PokerTable: React.FC<PokerTableProps> = ({
                   ))}
                 </div>
               </div>
+
+              {/* Quick Replay / Next Hand Button */}
+              <div className="pt-1.5 flex items-center justify-center">
+                <button
+                  id="btn-poker-showdown-restart"
+                  onClick={handleStartHand}
+                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs sm:text-sm tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] flex items-center gap-2 cursor-pointer active:scale-95 transition-all animate-pulse"
+                >
+                  <RotateCcw className="w-4 h-4 text-stone-950" />
+                  <span>再來一局 (發牌開始新局 / 空白鍵)</span>
+                </button>
+              </div>
+            </div>
+          ) : stage === 'folded' ? (
+            <div className="z-10 flex flex-col items-center justify-center gap-2.5 my-auto animate-in fade-in zoom-in-95">
+              <span className="px-3.5 py-1 rounded-full bg-stone-950/90 border border-stone-700 text-stone-300 text-xs font-mono font-bold">
+                已棄牌結算 • 彩池歸電腦
+              </span>
+              <button
+                id="btn-poker-folded-restart"
+                onClick={handleStartHand}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs sm:text-sm tracking-wider shadow-lg flex items-center gap-2 cursor-pointer active:scale-95 transition-all animate-pulse"
+              >
+                <RotateCcw className="w-4 h-4 text-stone-950" />
+                <span>再來一局 (空白鍵發牌)</span>
+              </button>
             </div>
           ) : (
             <div className="z-10 flex items-center justify-center gap-1.5 sm:gap-2.5 md:gap-3 my-auto">

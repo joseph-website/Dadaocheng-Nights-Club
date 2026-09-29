@@ -39,6 +39,10 @@ export const BettingTable: React.FC<BettingTableProps> = ({
   const [activeTab, setActiveTab] = useState<'felt' | 'racetrack'>('felt');
   const [neighborRange, setNeighborRange] = useState<number>(2); // ±1, ±2, ±3, ±4
   const [hoveredRacetrackNum, setHoveredRacetrackNum] = useState<number | null>(null);
+  // Mobile Section Filter for Plan A (Vertical 3-Column Table)
+  const [mobileSectionFilter, setMobileSectionFilter] = useState<
+    'all' | 'first12' | 'second12' | 'third12' | 'outside'
+  >('all');
 
   const getBetAmount = (id: string): number => {
     const found = currentBets.find((b) => b.id === id);
@@ -148,7 +152,7 @@ export const BettingTable: React.FC<BettingTableProps> = ({
   const row3 = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34];
 
   // Render number cell for Classic Felt view (Spacious and enlarged)
-  const renderFeltNumberCell = (num: number) => {
+  const renderFeltNumberCell = (num: number, isMobile = false) => {
     const id = `straight-${num}`;
     const amount = getBetAmount(id);
     const color = getNumberColor(num);
@@ -159,12 +163,14 @@ export const BettingTable: React.FC<BettingTableProps> = ({
     return (
       <button
         key={id}
-        id={id}
+        id={isMobile ? `mobile-${id}` : id}
         type="button"
         disabled={disabled}
         onClick={(e) => handleCellClick(e, 'straight', id, num, `直注 ${num}`)}
         onContextMenu={(e) => handleContextMenu(e, id)}
-        className={`bet-cell relative h-11 sm:h-12 md:h-13.5 flex flex-col items-center justify-center font-mono rounded-xl border transition-all duration-150 group select-none shadow-sm ${
+        className={`bet-cell relative ${
+          isMobile ? 'h-12 min-h-[46px]' : 'h-11 sm:h-12 md:h-13.5'
+        } flex flex-col items-center justify-center font-mono rounded-xl border transition-all duration-150 group select-none shadow-sm touch-manipulation ${
           isRed
             ? 'bg-gradient-to-b from-rose-600 via-rose-700 to-rose-900 hover:from-rose-500 hover:to-rose-800 border-rose-400/80 text-white hover:shadow-[0_0_14px_rgba(244,63,94,0.7)]'
             : 'bg-gradient-to-b from-zinc-800 via-stone-900 to-zinc-950 hover:from-zinc-700 hover:to-stone-900 border-zinc-600 text-zinc-100 hover:shadow-[0_0_14px_rgba(255,255,255,0.35)]'
@@ -192,12 +198,74 @@ export const BettingTable: React.FC<BettingTableProps> = ({
           </span>
         )}
 
-        <span className="text-base sm:text-lg font-black drop-shadow-md leading-none">
+        <span
+          className={`${
+            isMobile ? 'text-xl font-black' : 'text-base sm:text-lg font-black'
+          } drop-shadow-md leading-none`}
+        >
           {num}
         </span>
         <span className="text-[9px] sm:text-[10px] font-sans font-bold opacity-80 leading-none mt-0.5">
           {isRed ? '紅' : '黑'}
         </span>
+        {renderChip(amount)}
+      </button>
+    );
+  };
+
+  // Mobile Plan A: Helper for outside bets (high-frequency bets with large buttons)
+  const renderMobileOutsideBtn = (
+    id: string,
+    type: BetType,
+    label: string,
+    odds: string,
+    bgClass: string
+  ) => {
+    const amount = getBetAmount(id);
+    return (
+      <button
+        key={id}
+        id={`mobile-outside-${id}`}
+        type="button"
+        disabled={disabled}
+        onClick={(e) => handleCellClick(e, type, id, undefined, label)}
+        onContextMenu={(e) => handleContextMenu(e, id)}
+        className={`bet-cell relative h-11 rounded-xl border font-bold text-xs transition-all flex items-center justify-between px-3 shadow-sm active:scale-95 touch-manipulation cursor-pointer ${bgClass} ${
+          amount > 0
+            ? 'ring-2 ring-amber-400 font-black z-10 shadow-[0_0_12px_rgba(245,158,11,0.8)]'
+            : ''
+        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        title={`${label} - 賠率 ${odds}`}
+      >
+        <span className="font-black text-xs truncate">{label}</span>
+        <span className="font-mono text-[11px] font-black text-amber-300 shrink-0 ml-1">
+          {odds}
+        </span>
+        {renderChip(amount)}
+      </button>
+    );
+  };
+
+  // Mobile Plan A: Helper for column 2:1 bets
+  const renderMobileColumnBtn = (id: string, label: string) => {
+    const amount = getBetAmount(id);
+    return (
+      <button
+        key={id}
+        id={`mobile-col-${id}`}
+        type="button"
+        disabled={disabled}
+        onClick={(e) => handleCellClick(e, id as BetType, id, undefined, label)}
+        onContextMenu={(e) => handleContextMenu(e, id)}
+        className={`relative h-12 flex flex-col items-center justify-center font-mono font-bold rounded-xl border bg-stone-900/90 hover:bg-stone-800 border-amber-500/50 text-amber-300 shadow-sm transition-all active:scale-95 touch-manipulation cursor-pointer ${
+          amount > 0
+            ? 'ring-2 ring-amber-400 font-black z-10 shadow-[0_0_12px_rgba(245,158,11,0.8)]'
+            : ''
+        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        title={`${label} - 賠率 1:2`}
+      >
+        <span className="font-black text-sm leading-none">2:1</span>
+        <span className="text-[10px] text-stone-300 font-sans font-bold mt-0.5">{label}</span>
         {renderChip(amount)}
       </button>
     );
@@ -257,10 +325,252 @@ export const BettingTable: React.FC<BettingTableProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: COMPLETE AUTHENTIC EUROPEAN ROULETTE TABLE FELT (寬敞放大經典賭桌全貌) */}
+      {/* TAB 1: AUTHENTIC EUROPEAN ROULETTE TABLE FELT (MOBILE VERTICAL / DESKTOP CLASSIC) */}
       {/* ========================================================================= */}
       {activeTab === 'felt' && (
-        <div className="flex flex-col gap-2 animate-fade-in p-3 rounded-2xl bg-gradient-to-b from-[#06241b] via-[#041d15] to-[#02140e] border-2 border-emerald-500/40 shadow-inner">
+        <>
+          {/* ==================== A. MOBILE VERTICAL 3-COLUMN FELT (方案 A) ==================== */}
+          <div className="flex lg:hidden flex-col gap-2.5 animate-fade-in p-2 sm:p-2.5 rounded-2xl bg-gradient-to-b from-[#06241b] via-[#041d15] to-[#02140e] border-2 border-emerald-500/40 shadow-inner">
+            {/* Quick Section Navigation Filter Tabs */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5 shrink-0">
+              {[
+                { id: 'all', label: '全部 (0-36)' },
+                { id: 'outside', label: '外圍投注' },
+                { id: 'first12', label: '前區 (1-12)' },
+                { id: 'second12', label: '中區 (13-24)' },
+                { id: 'third12', label: '後區 (25-36)' },
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    setMobileSectionFilter(pill.id as any);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer ${
+                    mobileSectionFilter === pill.id
+                      ? 'bg-amber-400 text-stone-950 font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                      : 'bg-stone-900/90 text-stone-300 border border-stone-800'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Prominent Zero (0) Full-Width Banner (Shown on all, outside, and first12) */}
+            {(mobileSectionFilter === 'all' ||
+              mobileSectionFilter === 'outside' ||
+              mobileSectionFilter === 'first12') && (
+              <div className="w-full">
+                {(() => {
+                  const id = 'straight-0';
+                  const amount = getBetAmount(id);
+                  return (
+                    <button
+                      id={`mobile-${id}`}
+                      type="button"
+                      disabled={disabled}
+                      onClick={(e) => handleCellClick(e, 'straight', id, 0, '直注 0')}
+                      onContextMenu={(e) => handleContextMenu(e, id)}
+                      className={`bet-cell relative w-full h-12 rounded-xl flex items-center justify-between px-4 font-mono font-black transition-all bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-900 hover:from-emerald-500 hover:to-emerald-700 border-2 border-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.35)] active:scale-98 touch-manipulation cursor-pointer ${
+                        amount > 0
+                          ? 'ring-2 ring-amber-400 font-black z-10 shadow-[0_0_18px_rgba(245,158,11,0.9)]'
+                          : ''
+                      } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      title="直注 0 - 賠率 1:35"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-black drop-shadow-md">0</span>
+                        <span className="text-xs text-emerald-200 font-sans font-bold">
+                          零號 (ZERO)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-black text-amber-300 bg-black/40 px-2.5 py-0.5 rounded-full border border-emerald-400/40">
+                          1:35
+                        </span>
+                      </div>
+                      {renderChip(amount)}
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Outside Bets Section (High-Frequency 1:1 and 1:2 Bets) */}
+            {(mobileSectionFilter === 'all' || mobileSectionFilter === 'outside') && (
+              <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-black/40 border border-emerald-500/20">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-bold text-amber-300">外圍高頻投注區</span>
+                  <span className="text-[10px] text-stone-400 font-mono">賠率 1:1 / 1:2</span>
+                </div>
+
+                {/* 1:1 Outside Bets (6 Buttons: Red/Black, Even/Odd, Low/High) */}
+                <div className="grid grid-cols-2 gap-1.5 w-full">
+                  {renderMobileOutsideBtn(
+                    'red',
+                    'red',
+                    '🔴 紅 (RED)',
+                    '1:1',
+                    'bg-gradient-to-r from-rose-600 via-rose-700 to-rose-900 border-rose-400 text-white'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'black',
+                    'black',
+                    '⚫ 黑 (BLACK)',
+                    '1:1',
+                    'bg-gradient-to-r from-zinc-800 via-stone-900 to-black border-zinc-500 text-zinc-100'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'odd',
+                    'odd',
+                    '單數 (ODD)',
+                    '1:1',
+                    'bg-stone-900/90 border-amber-500/40 text-amber-200'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'even',
+                    'even',
+                    '雙數 (EVEN)',
+                    '1:1',
+                    'bg-stone-900/90 border-amber-500/40 text-amber-200'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'low',
+                    'low',
+                    '小 (1-18)',
+                    '1:1',
+                    'bg-stone-900/90 border-amber-500/40 text-amber-200'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'high',
+                    'high',
+                    '大 (19-36)',
+                    '1:1',
+                    'bg-stone-900/90 border-amber-500/40 text-amber-200'
+                  )}
+                </div>
+
+                {/* 1:2 Dozens (1st 12, 2nd 12, 3rd 12) */}
+                <div className="grid grid-cols-3 gap-1.5 w-full mt-1">
+                  {renderMobileOutsideBtn(
+                    'dozen_1',
+                    'dozen_1',
+                    '前區 1-12',
+                    '1:2',
+                    'bg-stone-900/95 border-amber-500/40 text-amber-200'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'dozen_2',
+                    'dozen_2',
+                    '中區 13-24',
+                    '1:2',
+                    'bg-stone-900/95 border-amber-500/40 text-amber-200'
+                  )}
+                  {renderMobileOutsideBtn(
+                    'dozen_3',
+                    'dozen_3',
+                    '後區 25-36',
+                    '1:2',
+                    'bg-stone-900/95 border-amber-500/40 text-amber-200'
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Vertical 3-Column Number Grid (Numbers 1-36 + Column 2:1 Bets) */}
+            {mobileSectionFilter !== 'outside' && (
+              <div className="flex flex-col gap-2">
+                {/* 1st 12 Section (Numbers 1-12) */}
+                {(mobileSectionFilter === 'all' || mobileSectionFilter === 'first12') && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30">
+                      <span className="text-xs font-black text-emerald-300">
+                        第一打 • 前區 (1 - 12)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) =>
+                          handleCellClick(e, 'dozen_1', 'dozen_1', undefined, '1st 12 (前區 1-12)')
+                        }
+                        className="text-[11px] font-bold text-amber-300 bg-black/60 px-2 py-0.5 rounded border border-amber-400/40 active:scale-95 cursor-pointer"
+                      >
+                        押注此區 (1:2)
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) =>
+                        renderFeltNumberCell(num, true)
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2nd 12 Section (Numbers 13-24) */}
+                {(mobileSectionFilter === 'all' || mobileSectionFilter === 'second12') && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30">
+                      <span className="text-xs font-black text-emerald-300">
+                        第二打 • 中區 (13 - 24)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) =>
+                          handleCellClick(e, 'dozen_2', 'dozen_2', undefined, '2nd 12 (中區 13-24)')
+                        }
+                        className="text-[11px] font-bold text-amber-300 bg-black/60 px-2 py-0.5 rounded border border-amber-400/40 active:scale-95 cursor-pointer"
+                      >
+                        押注此區 (1:2)
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].map((num) =>
+                        renderFeltNumberCell(num, true)
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3rd 12 Section (Numbers 25-36) */}
+                {(mobileSectionFilter === 'all' || mobileSectionFilter === 'third12') && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30">
+                      <span className="text-xs font-black text-emerald-300">
+                        第三打 • 後區 (25 - 36)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) =>
+                          handleCellClick(e, 'dozen_3', 'dozen_3', undefined, '3rd 12 (後區 25-36)')
+                        }
+                        className="text-[11px] font-bold text-amber-300 bg-black/60 px-2 py-0.5 rounded border border-amber-400/40 active:scale-95 cursor-pointer"
+                      >
+                        押注此區 (1:2)
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36].map((num) =>
+                        renderFeltNumberCell(num, true)
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2:1 Column Bets (Under Col 1, Col 2, Col 3) */}
+                {mobileSectionFilter === 'all' && (
+                  <div className="grid grid-cols-3 gap-1.5 mt-1 pt-2 border-t border-emerald-500/30">
+                    {renderMobileColumnBtn('col_1', '第 1 列')}
+                    {renderMobileColumnBtn('col_2', '第 2 列')}
+                    {renderMobileColumnBtn('col_3', '第 3 列')}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ==================== B. DESKTOP CLASSIC HORIZONTAL FELT ==================== */}
+          <div className="hidden lg:flex flex-col gap-2 animate-fade-in p-3 rounded-2xl bg-gradient-to-b from-[#06241b] via-[#041d15] to-[#02140e] border-2 border-emerald-500/40 shadow-inner">
           {/* Main Felt Structure:
               Left: Single '0' Green Column
               Center: 12 Columns (Top 3x12 numbers, Middle 3 Dozens, Bottom 6 Outside bets)
@@ -593,7 +903,8 @@ export const BettingTable: React.FC<BettingTableProps> = ({
             <div className="w-14 sm:w-16 md:w-20 shrink-0 hidden sm:block"></div>
           </div>
         </div>
-      )}
+      </>
+    )}
 
       {/* ========================================================================= */}
       {/* TAB 2: FRENCH RACETRACK & SECTOR CALL BETS (法式跑道與扇區注) */}

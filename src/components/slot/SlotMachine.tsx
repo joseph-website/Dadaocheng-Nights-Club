@@ -3,6 +3,7 @@ import { SlotSymbolId, SlotWinResult, SlotStats, SlotSpinHistoryItem } from '../
 import { getRandomSymbol, calculateSlotWin, SLOT_SYMBOLS } from '../../utils/slot';
 import { unlockHiddenCollectible } from '../../utils/inventory';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { toastService } from '../../utils/toast';
 import { checkHouseBonus, notifyHouseBonus, isAuraActive } from '../../utils/aura';
 import { recordCareerRound } from '../../utils/careerStats';
@@ -221,6 +222,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
     // Pull lever visual and audio (0.35s 3D spring rebound)
     setIsLeverPulled(true);
     sound.playLever();
+    haptics.medium();
     setTimeout(() => setIsLeverPulled(false), 350);
 
     // Start all 3 reels spinning
@@ -301,9 +303,11 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({
         if (result.isJackpot) {
           sound.playBigWin();
           sound.playCoinPayout();
+          haptics.heavy();
         } else {
           sound.playWin();
           sound.playCoinPayout();
+          haptics.success();
         }
 
         // Pop up individual Win Toast only if NOT part of an ongoing auto-spin session

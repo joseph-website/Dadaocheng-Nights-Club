@@ -122,49 +122,71 @@ export const CareerStatsModal: React.FC<CareerStatsModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-5 custom-scrollbar">
-          {/* Top 4 Core Metrics Bento */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Top Core Metrics Bento (3x2 grid on mobile/desktop) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {/* 1. 當前共享籌碼 */}
-            <div className="p-3.5 rounded-xl bg-stone-900/90 border border-amber-500/30 flex flex-col justify-between">
-              <span className="text-[11px] text-stone-400 font-bold flex items-center gap-1">
+            <div className="p-3 rounded-xl bg-stone-900/90 border border-amber-500/30 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 font-bold flex items-center gap-1">
                 <Coins className="w-3.5 h-3.5 text-amber-400" />
-                <span>當前籌碼庫存</span>
+                <span>當前籌碼</span>
               </span>
-              <span className="text-lg font-black text-amber-300 font-mono mt-1 drop-shadow-sm">
+              <span className="text-base sm:text-lg font-black text-amber-300 font-mono mt-1 drop-shadow-sm">
                 ${currentBalance.toLocaleString()}
               </span>
             </div>
 
-            {/* 2. 歷史累計投注額 */}
-            <div className="p-3.5 rounded-xl bg-stone-900/90 border border-stone-800 flex flex-col justify-between">
-              <span className="text-[11px] text-stone-400 font-bold flex items-center gap-1">
+            {/* 2. 歷史最高籌碼持有 (Peak Balance / High Score) */}
+            <div className="p-3 rounded-xl bg-stone-900/90 border border-yellow-500/40 flex flex-col justify-between shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+              <span className="text-[10px] sm:text-[11px] text-yellow-400/90 font-bold flex items-center gap-1">
+                <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                <span>歷史最高籌碼</span>
+              </span>
+              <span className="text-base sm:text-lg font-black text-yellow-300 font-mono mt-1">
+                ${Math.max(stats.highestBalance || 0, currentBalance).toLocaleString()}
+              </span>
+            </div>
+
+            {/* 3. 累計獲勝/通關次數 */}
+            <div className="p-3 rounded-xl bg-stone-900/90 border border-teal-500/30 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-[11px] text-teal-400/90 font-bold flex items-center gap-1">
+                <Award className="w-3.5 h-3.5 text-teal-400" />
+                <span>勝局/通關次數</span>
+              </span>
+              <span className="text-base sm:text-lg font-black text-teal-300 font-mono mt-1">
+                {(stats.totalWinsCount || 0).toLocaleString()} <span className="text-xs text-stone-500 font-normal">次</span>
+              </span>
+            </div>
+
+            {/* 4. 歷史累計投注額 */}
+            <div className="p-3 rounded-xl bg-stone-900/90 border border-stone-800 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 font-bold flex items-center gap-1">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
                 <span>累計下注總量</span>
               </span>
-              <span className="text-lg font-black text-stone-100 font-mono mt-1">
+              <span className="text-base sm:text-lg font-black text-stone-100 font-mono mt-1">
                 ${stats.totalBetsPlaced.toLocaleString()}
               </span>
             </div>
 
-            {/* 3. 單筆最高獲利 */}
-            <div className="p-3.5 rounded-xl bg-stone-900/90 border border-emerald-500/30 flex flex-col justify-between shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-              <span className="text-[11px] text-stone-400 font-bold flex items-center gap-1">
+            {/* 5. 單筆最高獲利 */}
+            <div className="p-3 rounded-xl bg-stone-900/90 border border-emerald-500/30 flex flex-col justify-between shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 font-bold flex items-center gap-1">
                 <Flame className="w-3.5 h-3.5 text-emerald-400" />
-                <span>歷史單局最大贏額</span>
+                <span>單局最大贏額</span>
               </span>
-              <span className="text-lg font-black text-emerald-400 font-mono mt-1">
+              <span className="text-base sm:text-lg font-black text-emerald-400 font-mono mt-1">
                 ${stats.biggestSingleWin.toLocaleString()}
               </span>
             </div>
 
-            {/* 4. 珍藏品收集率 */}
-            <div className="p-3.5 rounded-xl bg-stone-900/90 border border-purple-500/30 flex flex-col justify-between">
-              <span className="text-[11px] text-stone-400 font-bold flex items-center gap-1">
+            {/* 6. 珍藏品收集率 */}
+            <div className="p-3 rounded-xl bg-stone-900/90 border border-purple-500/30 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 font-bold flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                <span>珍藏品圖鑑解鎖</span>
+                <span>珍藏品圖鑑</span>
               </span>
-              <span className="text-lg font-black text-purple-300 font-mono mt-1">
-                {collectiblesCount} <span className="text-xs text-stone-500 font-normal">/ {ALL_COLLECTIBLES.length} 件</span>
+              <span className="text-base sm:text-lg font-black text-purple-300 font-mono mt-1">
+                {collectiblesCount} <span className="text-xs text-stone-500 font-normal">/ {ALL_COLLECTIBLES.length}</span>
               </span>
             </div>
           </div>

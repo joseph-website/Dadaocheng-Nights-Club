@@ -25,6 +25,7 @@ import {
   unlockHiddenCollectible,
 } from '../../utils/inventory';
 import { sound } from '../../utils/audio';
+import { haptics } from '../../utils/haptics';
 import { toastService } from '../../utils/toast';
 import { PawnShopView } from './PawnShopView';
 import { BarLoungeView } from './BarLoungeView';
@@ -223,6 +224,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   // 1. Redeem Single Item at Counter 1:1
   const handleRedeemSingle = (item: RedeemableItem) => {
     sound.playCoinPayout();
+    haptics.medium();
     const { amount, remaining } = redeemSingleItem(item.id);
     const newBalance = balance + amount;
     onUpdateBalance(newBalance);
@@ -238,6 +240,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
     if (redeemables.length === 0) return;
     sound.playBigWin();
     sound.playCoinPayout();
+    haptics.success();
     const { totalAmount, count } = redeemAllItems();
     const newBalance = balance + totalAmount;
     onUpdateBalance(newBalance);
@@ -488,43 +491,45 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
         </div>
       )}
 
-      {/* 1. TOP PROMOTIONAL LOBBY HERO BANNER (Height: ~75px) */}
-      <div className="w-full shrink-0 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-950/80 via-stone-900/90 to-purple-950/80 border border-amber-500/40 shadow-xl flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] flex items-center justify-center shrink-0">
-            <div className="w-full h-full bg-stone-950 rounded-[10px] flex items-center justify-center text-xl">
+      {/* 1. TOP PROMOTIONAL LOBBY HERO BANNER */}
+      <div className="w-full shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-950/80 via-stone-900/90 to-purple-950/80 border border-amber-500/40 shadow-xl flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.6)] flex items-center justify-center shrink-0">
+            <div className="w-full h-full bg-stone-950 rounded-[9px] sm:rounded-[10px] flex items-center justify-center text-base sm:text-xl">
               🏦
             </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-wider flex items-center gap-1.5">
-                賭場大廳中央交易所 <span className="text-amber-400 text-xs font-mono font-bold">(CENTRAL EXCHANGE)</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h2 className="text-sm sm:text-lg font-black text-white tracking-wider flex items-center gap-1.5 truncate">
+                賭場大廳中央交易所 <span className="text-amber-400 text-[10px] sm:text-xs font-mono font-bold hidden sm:inline">(CENTRAL EXCHANGE)</span>
               </h2>
             </div>
-            <p className="text-xs text-stone-300">
+            <p className="text-xs text-stone-300 hidden sm:block">
               在賭桌中觸發神秘條件即可收穫稀有珍品，亦可在夾娃娃機夾取代幣向櫃台兌換籌碼！
             </p>
           </div>
         </div>
 
         {/* Quick Lobby Category Tabs */}
-        <div className="flex items-center bg-black/60 p-1 rounded-xl border border-stone-800 gap-1">
+        <div className="flex items-center bg-black/60 p-1 rounded-xl border border-stone-800 gap-1 overflow-x-auto custom-scrollbar max-w-full">
           <button
             id="btn-tab-counter"
             type="button"
             onClick={() => {
               sound.playClick();
+              haptics.selection();
               setSelectedTab('counter');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
               selectedTab === 'counter'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-black'
                 : 'text-stone-300 hover:text-white hover:bg-stone-800'
             }`}
           >
-            <Coins className="w-4 h-4" />
-            <span>【櫃台兌換處】({redeemables.length})</span>
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+            <span className="sm:hidden">兌換 ({redeemables.length})</span>
+            <span className="hidden sm:inline">【櫃台兌換處】({redeemables.length})</span>
           </button>
 
           <button
@@ -532,18 +537,18 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             type="button"
             onClick={() => {
               sound.playClick();
+              haptics.selection();
               setSelectedTab('blackmarket');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
               selectedTab === 'blackmarket'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-black'
                 : 'text-stone-300 hover:text-white hover:bg-stone-800'
             }`}
           >
-            <Flame className="w-4 h-4 text-rose-400" />
-            <span>
-              【黑市貴賓廊】({activeNPCs.length} 位)
-            </span>
+            <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
+            <span className="sm:hidden">黑市 ({activeNPCs.length})</span>
+            <span className="hidden sm:inline">【黑市貴賓廊】({activeNPCs.length} 位)</span>
           </button>
 
           <button
@@ -551,16 +556,18 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             type="button"
             onClick={() => {
               sound.playClick();
+              haptics.selection();
               setSelectedTab('bar');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
               selectedTab === 'bar'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-black'
                 : 'text-stone-300 hover:text-white hover:bg-stone-800'
             }`}
           >
-            <Wine className="w-4 h-4 text-amber-300" />
-            <span>【夜行酒吧】(老查理)</span>
+            <Wine className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
+            <span className="sm:hidden">酒吧</span>
+            <span className="hidden sm:inline">【夜行酒吧】(老查理)</span>
           </button>
 
           <button
@@ -568,16 +575,18 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             type="button"
             onClick={() => {
               sound.playClick();
+              haptics.selection();
               setSelectedTab('pawnshop');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
               selectedTab === 'pawnshop'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-black'
                 : 'text-stone-300 hover:text-white hover:bg-stone-800'
             }`}
           >
-            <Building2 className="w-4 h-4 text-amber-400" />
-            <span>【地下當鋪】({pawnedItems.length})</span>
+            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+            <span className="sm:hidden">當鋪 ({pawnedItems.length})</span>
+            <span className="hidden sm:inline">【地下當鋪】({pawnedItems.length})</span>
           </button>
 
           <button
@@ -585,16 +594,18 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             type="button"
             onClick={() => {
               sound.playClick();
+              haptics.selection();
               setSelectedTab('collection');
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
               selectedTab === 'collection'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-black'
                 : 'text-stone-300 hover:text-white hover:bg-stone-800'
             }`}
           >
-            <Award className="w-4 h-4 text-purple-400" />
-            <span>【珍品陳列館】({collectibles.length}/{ALL_COLLECTIBLES.length})</span>
+            <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
+            <span className="sm:hidden">珍品 ({collectibles.length})</span>
+            <span className="hidden sm:inline">【珍品陳列館】({collectibles.length}/{ALL_COLLECTIBLES.length})</span>
           </button>
 
           {onOpenCashOut && (
@@ -603,13 +614,15 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               type="button"
               onClick={() => {
                 sound.playClick();
+                haptics.medium();
                 onOpenCashOut();
               }}
-              className="ml-auto px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white shadow-md font-black text-xs sm:text-sm flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shrink-0"
+              className="ml-auto px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white shadow-md font-black text-xs sm:text-sm flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
               title="結算今夜戰績並生成離場報告"
             >
-              <LogOut className="w-4 h-4 text-yellow-300" />
-              <span>🚪 離場結算</span>
+              <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-300" />
+              <span className="sm:hidden">結算</span>
+              <span className="hidden sm:inline">🚪 離場結算</span>
             </button>
           )}
         </div>
@@ -644,7 +657,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
 
             <div className="w-full flex-1 min-h-0 flex flex-col lg:flex-row gap-3 overflow-y-auto lg:overflow-hidden">
             {/* Left: Redeemable Tokens Inventory */}
-            <div className="w-full lg:w-[60%] min-h-[300px] lg:min-h-0 h-full rounded-2xl bg-[#0c0e16] border border-amber-500/20 shadow-xl p-3 flex flex-col justify-between overflow-hidden shrink-0 lg:shrink">
+            <div className="w-full lg:w-[60%] min-h-[200px] sm:min-h-[260px] lg:min-h-0 h-full rounded-2xl bg-[#0c0e16] border border-amber-500/20 shadow-xl p-3 flex flex-col justify-between overflow-hidden shrink-0 lg:shrink">
               <div className="flex items-center justify-between border-b border-stone-800 pb-2 shrink-0">
                 <div className="flex items-center gap-2">
                   <Package className="w-5 h-5 text-amber-400" />
@@ -738,7 +751,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             {/* Right: Active Black Market VIPs in the Lobby (正在大廳的黑市貴賓) */}
             <div
               id="lobby-active-vips-panel"
-              className="w-full lg:w-[40%] min-h-[300px] lg:min-h-0 h-full rounded-2xl bg-[#0c0e16] border border-rose-500/30 shadow-xl p-3 flex flex-col justify-between overflow-hidden shrink-0 lg:shrink"
+              className="w-full lg:w-[40%] min-h-[200px] sm:min-h-[260px] lg:min-h-0 h-full rounded-2xl bg-[#0c0e16] border border-rose-500/30 shadow-xl p-3 flex flex-col justify-between overflow-hidden shrink-0 lg:shrink"
             >
               {/* Panel Header */}
               <div className="flex items-center justify-between border-b border-stone-800 pb-2 shrink-0">
@@ -1419,8 +1432,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
         )}
       </div>
 
-      {/* 3. BOTTOM QUICK GAME LAUNCHER STRIP (Height: ~60px) */}
-      <div className="w-full shrink-0 p-2 rounded-2xl bg-[#0a0c12] border border-amber-500/20 shadow-lg flex items-center justify-between gap-2">
+      {/* 3. BOTTOM QUICK GAME LAUNCHER STRIP (Hidden on mobile < sm to maximize screen space) */}
+      <div className="hidden sm:flex w-full shrink-0 p-2 rounded-2xl bg-[#0a0c12] border border-amber-500/20 shadow-lg items-center justify-between gap-2">
         <div className="flex items-center gap-2 pl-2 text-xs font-bold text-stone-300 shrink-0">
           <Play className="w-4 h-4 text-amber-400 fill-current" />
           <span>快速啟動遊戲:</span>

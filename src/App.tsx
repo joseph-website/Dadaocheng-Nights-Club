@@ -6,8 +6,9 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { INITIAL_BALANCE } from './utils/constants';
 import { sound } from './utils/audio';
+import { bgmEngine } from './utils/bgmEngine';
 import { toastService } from './utils/toast';
-import { recordCareerRound } from './utils/careerStats';
+import { recordCareerRound, updateCareerPeakBalance } from './utils/careerStats';
 import { CasinoToastContainer } from './components/common/CasinoToastContainer';
 
 import { LobbyView } from './components/lobby/LobbyView';
@@ -60,19 +61,16 @@ import {
   Coins,
   Settings,
   HelpCircle,
-  Menu,
-  Pin,
-  PinOff,
-  ChevronDown,
-  ChevronUp,
   Music,
   Zap,
   LogOut,
   BookOpen,
+  ChevronLeft,
 } from 'lucide-react';
 import { VinylPlayer } from './components/common/VinylPlayer';
 import { MinimalistTicker } from './components/common/MinimalistTicker';
 import { isTurboMode, setTurboMode } from './utils/turbo';
+import { haptics } from './utils/haptics';
 
 const STORAGE_KEYS = {
   BALANCE: 'nocturnal_club_balance_v1',
@@ -148,9 +146,15 @@ export default function App() {
       } catch {
         // ignore
       }
+      updateCareerPeakBalance(safeNext);
       return safeNext;
     });
   }, []);
+
+  // Ensure initial/hydrated balance updates career peak if higher
+  useEffect(() => {
+    updateCareerPeakBalance(balance);
+  }, [balance]);
 
   // Toast Aura state
   const [auraActive, setAuraActive] = useState<boolean>(() => isAuraActive());
@@ -164,9 +168,21 @@ export default function App() {
   const [selectedChip, setSelectedChip] = useState<number>(100);
 
   // ==================== GLOBAL APP STATE ====================
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('casino_sound_enabled');
+      if (saved !== null) return saved === 'true';
+    } catch {}
+    return true;
+  });
   const [soundVolume, setSoundVolume] = useState<number>(sound.volume);
   const [turboMode, setTurboModeState] = useState(() => isTurboMode());
+
+  // Synchronize audio and BGM mute state on mount
+  useEffect(() => {
+    sound.enabled = soundEnabled;
+    bgmEngine.setMuted(!soundEnabled);
+  }, [soundEnabled]);
 
   // Listen for turbo changes from settings modal or hotkeys
   useEffect(() => {
@@ -213,67 +229,6 @@ export default function App() {
   }, []);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
-  // Minimalist Lounge UI: Unified Top Bar & Dropdown Drawer
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isDrawerPinned, setIsDrawerPinned] = useState(() => {
-    return localStorage.getItem('casino_top_drawer_pinned') === 'true';
-  });
-  const topBarRef = React.useRef<HTMLDivElement>(null);
-  const drawerLeaveTimerRef = React.useRef<any>(null);
-
-  const handleTopMouseEnter = useCallback(() => {
-    if (drawerLeaveTimerRef.current) {
-      clearTimeout(drawerLeaveTimerRef.current);
-      drawerLeaveTimerRef.current = null;
-    }
-  }, []);
-
-  const handleTopMouseLeave = useCallback(() => {
-    if (drawerLeaveTimerRef.current) clearTimeout(drawerLeaveTimerRef.current);
-    drawerLeaveTimerRef.current = setTimeout(() => {
-      if (!isDrawerPinned) {
-        setIsDrawerOpen(false);
-      }
-    }, 450);
-  }, [isDrawerPinned]);
-
-  const handleToggleDrawer = useCallback(() => {
-    sound.playClick();
-    setIsDrawerOpen((prev) => !prev);
-  }, []);
-
-  const handleTogglePin = useCallback(() => {
-    setIsDrawerPinned((prev) => {
-      const next = !prev;
-      localStorage.setItem('casino_top_drawer_pinned', next.toString());
-      if (next) setIsDrawerOpen(false);
-      return next;
-    });
-    sound.playClick();
-    toastService.info(!isDrawerPinned ? '📌 頂部選單已釘選固定' : '✨ 頂部選單已切換為極簡膠囊模式 (點擊或懸浮展開)');
-  }, [isDrawerPinned]);
-
-  // Close dropdown on click outside or Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isDrawerOpen) {
-        setIsDrawerOpen(false);
-      }
-    };
-    const handleClickOutside = (e: MouseEvent) => {
-      if (topBarRef.current && !topBarRef.current.contains(e.target as Node)) {
-        if (!isDrawerPinned && isDrawerOpen) {
-          setIsDrawerOpen(false);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isDrawerOpen, isDrawerPinned]);
 
   // Auto-Save Storage Interceptor & Event Listener
   useEffect(() => {
@@ -301,6 +256,25 @@ export default function App() {
   const handleChangeVolume = useCallback((vol: number) => {
     sound.setVolume(vol);
     setSoundVolume(vol);
+  }, []);
+
+  // Global Screen Shake Event Listener
+  const [shakeClass, setShakeClass] = useState<string>('');
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    const handleShake = (e: any) => {
+      const intensity = e.detail?.intensity || 'medium';
+      setShakeClass(`screen-shake-${intensity}`);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setShakeClass('');
+      }, 450);
+    };
+    window.addEventListener('casino_screen_shake', handleShake);
+    return () => {
+      window.removeEventListener('casino_screen_shake', handleShake);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   // Update inventory count
@@ -521,9 +495,13 @@ export default function App() {
         e.preventDefault();
         const next = !soundEnabled;
         sound.enabled = next;
+        bgmEngine.setMuted(!next);
         setSoundEnabled(next);
-        sound.playClick();
-        toastService.info(next ? '🔊 音效已開啟' : '🔇 音效已靜音');
+        try {
+          localStorage.setItem('casino_sound_enabled', String(next));
+        } catch {}
+        if (next) sound.playClick();
+        toastService.info(next ? '🔊 音效已開啟' : '🔇 全域靜音已啟用');
         return;
       }
 
@@ -649,7 +627,6 @@ export default function App() {
   const handleRequestTabChange = useCallback(
     (targetTab: ActiveGameTab) => {
       if (targetTab === activeGame) {
-        setIsDrawerOpen(false);
         return;
       }
 
@@ -661,6 +638,7 @@ export default function App() {
 
       if (isCurrentBusy) {
         sound.playLoss();
+        haptics.warning();
         const currentTabInfo = GAME_TABS.find((t) => t.id === activeGame);
         const targetTabInfo = GAME_TABS.find((t) => t.id === targetTab);
         setPendingForfeitModal({
@@ -673,13 +651,13 @@ export default function App() {
           targetGameIcon: targetTabInfo?.icon || '🏛️',
           forfeitAmount: currentAtStake,
         });
-        setIsDrawerOpen(false);
         return;
       }
 
       // Prevent entering game tables if balance is below 100
       if (balance <= 99 && targetTab !== 'lobby') {
         sound.playLoss();
+        haptics.warning();
         const counts = getTotalInventoryCount();
         if (counts.redeemablesCount > 0) {
           toastService.error('🚨 當前籌碼低於 100 點，賭桌已暫時鎖定！您身上持有代幣券，請前往大廳 VIP 櫃台進行 1:1 兌換籌碼！');
@@ -704,10 +682,10 @@ export default function App() {
       }
 
       sound.playChip();
+      haptics.selection();
       setIsGameRoundBusy(false);
       setCurrentGameBetAtStake(0);
       setActiveGame(targetTab);
-      setIsDrawerOpen(false);
     },
     [activeGame, balance, isGameRoundBusy, currentGameBetAtStake, isUnderBankruptcyPawn]
   );
@@ -751,7 +729,6 @@ export default function App() {
 
     sound.playChip();
     setActiveGame(targetTab);
-    setIsDrawerOpen(false);
   }, [pendingForfeitModal]);
 
   // Handle user cancelling forfeit and returning to table
@@ -770,7 +747,6 @@ export default function App() {
       setCurrentGameBetAtStake(0);
       setActiveGame(pendingLeaveModal.targetTab);
       setPendingLeaveModal(null);
-      setIsDrawerOpen(false);
       if (balance <= 99 || isUnderBankruptcyPawn) {
         const counts = getTotalInventoryCount();
         if (counts.redeemablesCount > 0) {
@@ -787,35 +763,54 @@ export default function App() {
   }, [pendingLeaveModal, refreshInventoryCount, balance, isUnderBankruptcyPawn]);
 
   return (
-    <div className="h-screen min-h-[100dvh] max-h-[100dvh] w-screen bg-[#07090e] text-stone-100 flex flex-col font-sans antialiased overflow-hidden select-none selection:bg-amber-500 selection:text-black relative">
+    <div className={`h-screen min-h-[100dvh] max-h-[100dvh] w-full bg-[#07090e] text-stone-100 flex flex-col font-sans antialiased overflow-hidden select-none selection:bg-amber-500 selection:text-black relative overscroll-none touch-manipulation ${shakeClass}`}>
       {/* ================= Unified Minimalist Floating Command Bar ================= */}
       <div
         id="unified-top-command-bar"
-        ref={topBarRef}
-        onMouseEnter={handleTopMouseEnter}
-        onMouseLeave={handleTopMouseLeave}
-        className="fixed top-1.5 left-1.5 right-1.5 sm:top-2.5 sm:left-4 sm:right-4 z-40 flex flex-col pointer-events-auto"
+        className="fixed top-1 left-1 right-1 sm:top-2.5 sm:left-4 sm:right-4 z-40 flex flex-col pointer-events-auto"
       >
-        {/* Main Floating Capsule */}
-        <div className="h-[42px] sm:h-[48px] px-2 sm:px-3.5 rounded-2xl bg-[#090c15]/95 hover:bg-[#0c0f1b]/98 backdrop-blur-xl border border-amber-500/30 shadow-[0_8px_30px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1.5 sm:gap-3 transition-all duration-300">
+        {/* Main Floating Capsule (Single row on desktop, top row on mobile) */}
+        <div className="h-[40px] sm:h-[48px] px-2 sm:px-3.5 rounded-2xl bg-[#090c15]/95 hover:bg-[#0c0f1b]/98 backdrop-blur-xl border border-amber-500/30 shadow-[0_8px_30px_rgba(0,0,0,0.85)] flex items-center justify-between gap-1.5 sm:gap-3 transition-all duration-300 w-full min-w-0">
           {/* [Left Dock]: Brand + Highlighted Gold Balance Badge + Auto-Save Dot */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              id="brand-logo-btn"
-              onClick={() => handleRequestTabChange('lobby')}
-              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group text-left border-none bg-transparent p-0 transition-transform active:scale-95"
-              title="點擊返回大廳櫃台"
-            >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-600 p-0.5 shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <div className="w-full h-full bg-stone-950 rounded-[9px] flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            {activeGame !== 'lobby' ? (
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <button
+                  id="btn-nav-back-lobby"
+                  onClick={() => handleRequestTabChange('lobby')}
+                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:from-amber-500/30 hover:to-yellow-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all active:scale-95 touch-manipulation cursor-pointer shadow-xs"
+                  title="返回大廳櫃台"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-xs font-black">大廳</span>
+                </button>
+
+                {/* Current Table Badge on Mobile */}
+                <div className="flex sm:hidden items-center gap-1 px-1.5 py-0.5 rounded-lg bg-stone-900/90 border border-amber-500/30 text-[11px] font-bold text-amber-300 shrink-0">
+                  <span>{GAME_TABS.find((t) => t.id === activeGame)?.icon}</span>
+                  <span className="truncate max-w-[65px]">
+                    {GAME_TABS.find((t) => t.id === activeGame)?.shortName || GAME_TABS.find((t) => t.id === activeGame)?.name}
+                  </span>
                 </div>
               </div>
-              <div className="hidden lg:flex flex-col leading-tight">
-                <span className="text-xs font-black text-white tracking-wide">大稻賭埕之夜</span>
-                <span className="text-[8px] text-amber-400 font-mono font-bold tracking-wider">CASINO NIGHT</span>
-              </div>
-            </button>
+            ) : (
+              <button
+                id="brand-logo-btn"
+                onClick={() => handleRequestTabChange('lobby')}
+                className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group text-left border-none bg-transparent p-0 transition-transform active:scale-95"
+                title="點擊返回大廳櫃台"
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-600 p-0.5 shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-full h-full bg-stone-950 rounded-[9px] flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                  </div>
+                </div>
+                <div className="hidden lg:flex flex-col leading-tight">
+                  <span className="text-xs font-black text-white tracking-wide">大稻賭埕之夜</span>
+                  <span className="text-[8px] text-amber-400 font-mono font-bold tracking-wider">CASINO NIGHT</span>
+                </div>
+              </button>
+            )}
 
             {/* Prominent Golden Chip Asset Card */}
             <div
@@ -838,55 +833,31 @@ export default function App() {
             </div>
           </div>
 
-          {/* [Center Dock]: Pinned Horizontal Tabs OR Dynamic Game Selector Pill */}
-          {isDrawerPinned ? (
-            <div className="flex-1 flex justify-center overflow-x-auto scrollbar-none px-1">
-              <nav className="flex items-center bg-stone-950/90 p-0.5 rounded-xl border border-stone-800/80 shadow-inner max-w-full overflow-x-auto scrollbar-none gap-1">
-                {GAME_TABS.map((tab) => {
-                  const isActive = activeGame === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      id={`tab-btn-${tab.id}`}
-                      onClick={() => handleRequestTabChange(tab.id)}
-                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 shadow-[0_0_12px_rgba(245,158,11,0.6)] font-black'
-                          : 'text-stone-300 hover:text-white hover:bg-stone-800/80'
-                      }`}
-                    >
-                      {tab.shortName || tab.name}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center min-w-0">
-              <button
-                id="btn-trigger-game-dropdown"
-                onClick={handleToggleDrawer}
-                className={`flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-xl border transition-all cursor-pointer shadow-md active:scale-95 max-w-[130px] sm:max-w-none truncate ${
-                  isDrawerOpen
-                    ? 'bg-amber-500 text-stone-950 border-amber-300 font-black shadow-[0_0_15px_rgba(245,158,11,0.5)]'
-                    : 'bg-stone-950/80 hover:bg-stone-900 border-amber-500/40 text-amber-300 hover:text-amber-200'
-                }`}
-                title="點擊展開/收合所有遊戲導覽"
-              >
-                <span className="text-xs sm:text-sm font-bold flex items-center gap-1 truncate">
-                  <span>{GAME_TABS.find((t) => t.id === activeGame)?.icon}</span>
-                  <span className="truncate">{GAME_TABS.find((t) => t.id === activeGame)?.name || '遊戲選擇'}</span>
-                </span>
-                <ChevronDown
-                  className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
-                    isDrawerOpen ? 'rotate-180 text-stone-950' : 'text-amber-400'
-                  }`}
-                />
-              </button>
-            </div>
-          )}
+          {/* [Center Dock]: Desktop-only Fixed Permanent Horizontal Game Navigation Bar (hidden on mobile, visible on sm+) */}
+          <div className="hidden sm:flex flex-1 justify-center overflow-x-auto scrollbar-none px-1 min-w-0">
+            <nav className="flex items-center bg-stone-950/90 p-0.5 sm:p-1 rounded-xl border border-stone-800/80 shadow-inner max-w-full overflow-x-auto scrollbar-none gap-0.5 sm:gap-1">
+              {GAME_TABS.map((tab) => {
+                const isActive = activeGame === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    id={`tab-btn-${tab.id}`}
+                    onClick={() => handleRequestTabChange(tab.id)}
+                    className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 touch-manipulation ${
+                      isActive
+                        ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 shadow-[0_0_12px_rgba(245,158,11,0.6)] font-black'
+                        : 'text-stone-300 hover:text-white hover:bg-stone-800/80'
+                    }`}
+                  >
+                    <span className="text-xs">{tab.icon}</span>
+                    <span>{tab.shortName || tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
 
-          {/* [Right Dock]: Vinyl Music Player + Help + Backpack + System Settings + Pin */}
+          {/* [Right Dock]: Vinyl Music Player + Spectator NPC + Help + Backpack + Turbo + System Settings + Cash Out */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <VinylPlayer variant="compact" onOpenSystemSettings={() => setIsSystemModalOpen(true)} />
 
@@ -898,7 +869,7 @@ export default function App() {
                   gameName={GAME_TABS.find((t) => t.id === activeGame)?.name || '賭桌'}
                   balance={balance}
                   onUpdateBalance={(newBal) => {
-                    setBalance(newBal);
+                    handleUpdateBalance(newBal);
                     refreshInventoryCount();
                   }}
                 />
@@ -936,6 +907,35 @@ export default function App() {
                   {inventoryCount.total}
                 </span>
               )}
+            </button>
+
+            {/* One-Click Global Sound & Mute Toggle */}
+            <button
+              id="btn-global-sound-mute"
+              onClick={() => {
+                const next = !soundEnabled;
+                setSoundEnabled(next);
+                sound.enabled = next;
+                bgmEngine.setMuted(!next);
+                try {
+                  localStorage.setItem('casino_sound_enabled', String(next));
+                } catch {}
+                if (next) sound.playClick();
+                toastService.info(next ? '🔊 音效已開啟' : '🔇 全域靜音已啟用');
+              }}
+              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1 min-h-[36px] min-w-[36px] sm:min-h-[38px] sm:min-w-[38px] ${
+                soundEnabled
+                  ? 'bg-stone-900/90 hover:bg-stone-800 text-stone-200 border-stone-700 hover:border-amber-500/40'
+                  : 'bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border-rose-600/50 shadow-[0_0_10px_rgba(225,29,72,0.3)]'
+              }`}
+              title={soundEnabled ? '🔊 點擊全域靜音 (快捷鍵 M)' : '🔇 點擊開啟音效 (快捷鍵 M)'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+              )}
+              <span className="hidden md:inline text-xs">{soundEnabled ? '音效' : '靜音'}</span>
             </button>
 
             {/* Quick Turbo Mode Toggle Button (Desktop/Tablet quick toggle; on mobile in System Modal) */}
@@ -990,87 +990,40 @@ export default function App() {
               <LogOut className="w-3.5 h-3.5 text-yellow-300" />
               <span className="hidden md:inline text-xs font-black">離場</span>
             </button>
-
-            {/* Pin Toggle (Hidden on mobile < sm where dropdown tap is natural) */}
-            <button
-              id="btn-toggle-pin-drawer"
-              onClick={handleTogglePin}
-              className={`hidden sm:flex p-1.5 rounded-xl border text-xs transition-all cursor-pointer active:scale-95 min-h-[38px] min-w-[38px] items-center justify-center ${
-                isDrawerPinned
-                  ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                  : 'bg-stone-900/90 hover:bg-stone-800 text-stone-400 hover:text-white border-stone-700'
-              }`}
-              title={isDrawerPinned ? '解除釘選 (改為極簡膠囊模式)' : '釘選頂部導覽列 (常駐顯示)'}
-            >
-              {isDrawerPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-            </button>
           </div>
         </div>
 
-        {/* Dropdown Floating Game Drawer (Smooth Animated Dropdown Card) */}
-        {!isDrawerPinned && isDrawerOpen && (
-          <div
-            id="game-dropdown-drawer"
-            className="mt-1.5 p-2 sm:p-2.5 rounded-2xl bg-[#0a0d18]/98 backdrop-blur-2xl border border-amber-500/35 shadow-[0_15px_45px_rgba(0,0,0,0.95)] flex flex-wrap items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2 duration-200 z-50"
-          >
-            <div className="grid grid-cols-3 sm:flex sm:items-center gap-1.5 w-full sm:w-auto">
-              {GAME_TABS.map((tab) => {
-                const isActive = activeGame === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    id={`drawer-tab-btn-${tab.id}`}
-                    onClick={() => {
-                      handleRequestTabChange(tab.id);
-                      setIsDrawerOpen(false);
-                    }}
-                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 touch-manipulation min-h-[44px] ${
-                      isActive
-                        ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 shadow-[0_0_14px_rgba(245,158,11,0.6)] font-black'
-                        : 'text-stone-300 hover:text-white hover:bg-stone-800/90 border border-stone-800/80 hover:border-amber-500/30'
-                    }`}
-                  >
-                    <span className="text-base sm:text-sm">{tab.icon}</span>
-                    <span className="text-[11px] sm:text-xs md:text-sm">{tab.name}</span>
-                  </button>
-                );
-              })}
-
-              {/* Dedicated Cash Out action in Drawer */}
-              <button
-                id="drawer-tab-btn-cashout"
-                onClick={() => {
-                  sound.playClick();
-                  setIsDrawerOpen(false);
-                  setIsCashOutOpen(true);
-                }}
-                className="col-span-3 sm:col-span-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-3 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap active:scale-95 touch-manipulation min-h-[44px] bg-gradient-to-r from-amber-600/90 to-rose-600/90 hover:from-amber-500 hover:to-rose-500 text-white border border-amber-400/50 shadow-md"
-              >
-                <LogOut className="w-4 h-4 text-yellow-300" />
-                <span>🚪 離場結算</span>
-              </button>
-            </div>
-
-            {/* Spectator NPC in Drawer for smaller screens */}
-            {activeGame !== 'lobby' && (
-              <div className="xl:hidden ml-auto shrink-0">
-                <TableNPCWidget
-                  gameId={activeGame}
-                  gameName={GAME_TABS.find((t) => t.id === activeGame)?.name || '賭桌'}
-                  balance={balance}
-                  onUpdateBalance={(newBal) => {
-                    handleUpdateBalance(newBal);
-                    refreshInventoryCount();
-                  }}
-                />
-              </div>
-            )}
-          </div>
+        {/* [Mobile Row 2]: Dedicated Permanent Horizontal Game Navigation Bar (Only on mobile in Lobby) */}
+        {activeGame === 'lobby' && (
+          <nav className="flex sm:hidden items-center bg-[#090c15]/95 backdrop-blur-xl px-1.5 py-1 mt-1 rounded-xl border border-amber-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.8)] w-full overflow-x-auto scrollbar-none gap-1 touch-pan-x min-w-0">
+            {GAME_TABS.map((tab) => {
+              const isActive = activeGame === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  id={`mobile-tab-btn-${tab.id}`}
+                  onClick={() => handleRequestTabChange(tab.id)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 touch-manipulation shrink-0 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.6)] font-black'
+                      : 'text-stone-300 hover:text-white bg-stone-900/80 border border-stone-800/60'
+                  }`}
+                >
+                  <span className="text-xs">{tab.icon}</span>
+                  <span>{tab.shortName || tab.name}</span>
+                </button>
+              );
+            })}
+          </nav>
         )}
       </div>
 
       {/* ================= Main Dynamic Stage (Center) ================= */}
-      <main className="flex-1 min-h-0 h-full w-full overflow-y-auto lg:overflow-hidden p-1.5 sm:p-2.5 pt-13 sm:pt-14 relative flex flex-col justify-between">
+      <main
+        className={`flex-1 min-h-0 w-full overflow-y-auto lg:overflow-hidden p-1.5 sm:p-2.5 relative flex flex-col justify-between ${
+          activeGame === 'lobby' ? 'pt-[88px] sm:pt-14' : 'pt-12 sm:pt-14'
+        } ${shakeClass}`}
+      >
         {/* Ambient Slow Neon Breathing Lighting Background */}
         <div className="absolute inset-0 pointer-events-none neon-breathing-bg bg-[radial-gradient(ellipse_at_50%_35%,_rgba(245,158,11,0.06),_transparent_75%)]" />
 
@@ -1078,13 +1031,13 @@ export default function App() {
         {auraActive && activeGame !== 'lobby' && (
           <div
             id="page-toast-aura-glow"
-            className="absolute inset-2 sm:inset-2.5 top-13 sm:top-14 rounded-2xl pointer-events-none z-40 toast-aura-page-glow animate-in fade-in duration-500"
+            className="absolute inset-2 sm:inset-2.5 top-12 sm:top-14 rounded-2xl pointer-events-none z-40 toast-aura-page-glow animate-in fade-in duration-500"
           />
         )}
 
         {/* ==================== 0. LOBBY COUNTER & TRADING HUB VIEW ==================== */}
         {activeGame === 'lobby' && (
-          <div className="w-full h-full overflow-hidden animate-fade-in">
+          <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
             <LobbyView
               balance={balance}
               initialTab={lobbyTab}
@@ -1126,7 +1079,7 @@ export default function App() {
 
           {/* ==================== 2. BLACKJACK VIEW ==================== */}
           {activeGame === 'blackjack' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
               <BlackjackTable
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
@@ -1140,7 +1093,7 @@ export default function App() {
 
           {/* ==================== 3. SLOT MACHINE VIEW ==================== */}
           {activeGame === 'slot' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
               <SlotMachine
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
@@ -1166,7 +1119,7 @@ export default function App() {
 
           {/* ==================== 5. TEXAS HOLD'EM 1V1 (德州撲克) VIEW ==================== */}
           {activeGame === 'poker' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
               <PokerTable
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
@@ -1180,7 +1133,7 @@ export default function App() {
 
           {/* ==================== 6. CRAPS (花旗骰) VIEW ==================== */}
           {activeGame === 'craps' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
               <CrapsGame
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
@@ -1194,7 +1147,7 @@ export default function App() {
 
           {/* ==================== 7. PLINKO (彈珠台) VIEW ==================== */}
           {activeGame === 'plinko' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
               <PlinkoGame
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
@@ -1207,7 +1160,7 @@ export default function App() {
 
           {/* ==================== 8. CLAW MACHINE (夾娃娃機) VIEW ==================== */}
           {activeGame === 'claw' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-y-auto lg:overflow-hidden animate-fade-in">
               <ClawMachine
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
@@ -1222,7 +1175,7 @@ export default function App() {
 
           {/* ==================== 9. TRADITIONAL PINBALL (夜市打彈珠) VIEW ==================== */}
           {activeGame === 'pinball' && (
-            <div className="w-full h-full overflow-hidden animate-fade-in">
+            <div className="w-full h-full overflow-x-hidden overflow-y-auto lg:overflow-hidden animate-fade-in">
               <TraditionalPinballGame
                 balance={balance}
                 onUpdateBalance={handleUpdateBalance}
